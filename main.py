@@ -1,6 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
+
 from app.services.openai_service import OpenAIService
 from pydantic import BaseModel
 
