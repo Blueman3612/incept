@@ -15,6 +15,8 @@ from urllib3.util.retry import Retry
 import json
 import time
 from datetime import datetime
+import random
+import re
 
 def create_session():
     """Create a requests session with retry logic and timeouts"""
@@ -94,7 +96,7 @@ def setup_supabase(session, supabase_url: str, headers: dict) -> None:
         print(f"✗ Error checking/setting up Supabase: {str(e)}")
         raise
 
-def save_example(session, supabase_url: str, headers: dict, example: dict) -> None:
+def save_example(session, supabase_url: str, headers: dict, example: dict) -> dict:
     """Save a test example to Supabase"""
     try:
         print("\nSaving example to Supabase...")
@@ -145,6 +147,7 @@ def save_example(session, supabase_url: str, headers: dict, example: dict) -> No
         }
         print(json.dumps(data, indent=2))
         
+        # First save with minimal return
         response = session.post(
             f"{supabase_url}/rest/v1/test_examples",
             headers=headers,
@@ -158,19 +161,31 @@ def save_example(session, supabase_url: str, headers: dict, example: dict) -> No
             
         response.raise_for_status()
         print(f"✓ Saved example with quality_status: {data['quality_status']}")
-        return response.json()  # Return the created record to get its ID
+        
+        # If we need the ID, make a separate request to get the latest record
+        if data["quality_status"] == "good":  # Only fetch ID for good examples since we need it for mutations
+            headers_with_return = headers.copy()
+            headers_with_return["Prefer"] = "return=representation"
+            response = session.get(
+                f"{supabase_url}/rest/v1/test_examples?order=created_at.desc&limit=1",
+                headers=headers_with_return
+            )
+            if response.status_code == 200:
+                return response.json()[0]
+        
+        return data  # Return the data we saved as fallback
+        
     except Exception as e:
         print(f"✗ Error saving example: {str(e)}")
         if isinstance(e, requests.exceptions.HTTPError):
             print(f"Response text: {e.response.text}")
         return None
 
-def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: str, difficulty: str) -> list:
-    """Get feedback from previous examples for this lesson and difficulty level"""
+def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: str, difficulty: str) -> dict:
+    """Get feedback and successful patterns from previous examples"""
     try:
-        print(f"\nLoading historical feedback for {lesson} at {difficulty} level...")
+        print(f"📚 Loading history for {lesson}/{difficulty}...")
         
-        # Convert lesson name to match database format
         lesson_mapping = {
             "main_idea": "Main Idea and Supporting Details",
             "supporting_details": "Supporting Details",
@@ -178,142 +193,184 @@ def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: s
         }
         mapped_lesson = lesson_mapping.get(lesson, lesson)
         
-        # Query Supabase for relevant examples
-        query_params = {
-            "lesson": f"eq.{mapped_lesson}",
-            "difficulty_level": f"eq.{difficulty}",
-            "select": "metadata,quality_status"
-        }
-        
         response = session.get(
             f"{supabase_url}/rest/v1/test_examples",
             headers=headers,
-            params=query_params
+            params={
+                "lesson": f"eq.{mapped_lesson}",
+                "difficulty_level": f"eq.{difficulty}",
+                "select": "metadata,quality_status,content"
+            }
         )
         
         if response.status_code == 200:
             examples = response.json()
             
-            # Collect feedback patterns
-            feedback_patterns = {
-                "common_issues": [],
-                "successful_patterns": [],
-                "improvement_suggestions": []
+            # Extract successful language patterns
+            successful_patterns = {
+                "passages": [],
+                "explanations": [],
+                "solutions": []
             }
+            
+            language_rules = set()  # Cumulative language rules
             
             for example in examples:
                 metadata = example.get("metadata", {})
+                scores = metadata.get("scores", {})
                 
-                if example["quality_status"] == "bad":
-                    # Extract feedback from failed examples
-                    if metadata.get("feedback"):
-                        for criterion, feedback in metadata["feedback"].items():
-                            if isinstance(feedback, str) and feedback.strip():
-                                feedback_patterns["common_issues"].append(f"{criterion}: {feedback}")
-                else:
-                    # Learn from successful examples
-                    scores = metadata.get("scores", {})
-                    high_scoring_criteria = [k for k, v in scores.items() if v >= 0.99]
-                    if high_scoring_criteria:
-                        feedback_patterns["successful_patterns"].extend(high_scoring_criteria)
+                # If language_quality score is high, extract the patterns
+                if scores.get("language_quality", 0) >= 0.99:
+                    content = example.get("content", "")
+                    
+                    # Extract successful passage
+                    passage_match = re.search(r'Read the following passage.*?\n\n(.*?)\n\n', content, re.DOTALL)
+                    if passage_match:
+                        successful_patterns["passages"].append(passage_match.group(1))
+                    
+                    # Extract successful explanations
+                    explanation_match = re.search(r'Explanation for wrong answers:\n(.*?)\n\nSolution:', content, re.DOTALL)
+                    if explanation_match:
+                        successful_patterns["explanations"].append(explanation_match.group(1))
+                    
+                    # Extract successful solutions
+                    solution_match = re.search(r'Solution:\n(.*?)$', content, re.DOTALL)
+                    if solution_match:
+                        successful_patterns["solutions"].append(solution_match.group(1))
+                
+                # Collect language rules from feedback
+                if metadata.get("feedback", {}).get("language_quality"):
+                    feedback = metadata["feedback"]["language_quality"]
+                    rules = re.findall(r'(?:avoid|use|keep|make|ensure).*?(?:\.|\n)', feedback.lower())
+                    language_rules.update(rules)
             
-            # Deduplicate and format feedback
-            feedback_summary = []
+            return {
+                "successful_patterns": successful_patterns,
+                "language_rules": list(language_rules)
+            }
             
-            if feedback_patterns["common_issues"]:
-                # Get unique issues, prioritize most frequent
-                from collections import Counter
-                issue_counter = Counter(feedback_patterns["common_issues"])
-                common_issues = [issue for issue, count in issue_counter.most_common(5)]
-                feedback_summary.extend([
-                    "Common issues to avoid:",
-                    *[f"- {issue}" for issue in common_issues]
-                ])
-            
-            if feedback_patterns["successful_patterns"]:
-                # Get most common success patterns
-                pattern_counter = Counter(feedback_patterns["successful_patterns"])
-                success_patterns = [pattern for pattern, count in pattern_counter.most_common(3)]
-                feedback_summary.extend([
-                    "\nStrengths to maintain:",
-                    *[f"- Strong {pattern}" for pattern in success_patterns]
-                ])
-            
-            print(f"✓ Loaded feedback from {len(examples)} previous examples")
-            return feedback_summary
-            
-        else:
-            print(f"✗ Failed to load historical feedback: {response.status_code}")
-            return []
+        return {"successful_patterns": {}, "language_rules": []}
             
     except Exception as e:
-        print(f"✗ Error loading historical feedback: {str(e)}")
-        return []
+        print(f"❌ History loading error: {str(e)}")
+        return {"successful_patterns": {}, "language_rules": []}
 
-def generate_question(qc_service: QualityControlService, lesson: str, difficulty: str, feedback_history: list, historical_feedback: list = None) -> str:
-    """Generate a new question using GPT-4, incorporating both recent and historical feedback"""
+def generate_question(qc_service: QualityControlService, lesson: str, difficulty: str, feedback_history: list, historical_data: dict = None) -> str:
+    """Generate a new question using GPT-4 with improved language learning"""
     
-    # Combine historical and recent feedback
-    feedback_guidance = ""
-    if historical_feedback:
-        feedback_guidance += "\n\nBased on analysis of previous questions:\n" + "\n".join(historical_feedback)
+    # Extract language patterns from history
+    successful_patterns = historical_data.get("successful_patterns", {})
+    language_rules = historical_data.get("language_rules", [])
     
-    if feedback_history:
-        feedback_guidance += "\n\nBased on recent attempts, please address:\n" + "\n".join(
-            f"- {feedback}" for feedback in feedback_history[-3:]
-        )
+    # Build language guidance from successful patterns and rules
+    language_guidance = "Language Requirements:\n"
+    
+    if language_rules:
+        language_guidance += "Follow these specific rules:\n"
+        language_guidance += "\n".join(f"- {rule}" for rule in language_rules[:5])
+        language_guidance += "\n"
+    
+    if successful_patterns.get("passages"):
+        language_guidance += "\nExample of good passage structure:\n"
+        language_guidance += successful_patterns["passages"][-1]  # Use most recent successful passage
+    
+    # Rest of the context selection logic...
+    contexts = [
+        "a student's experience at school",
+        "an interesting animal fact",
+        "a historical event",
+        "a scientific discovery",
+        "a community event",
+        "a family tradition",
+        "a nature observation",
+        "a problem-solving situation",
+        "a cultural celebration",
+        "a creative activity"
+    ]
+    
+    used_topics = []
+    if historical_data and "successful_patterns" in historical_data:
+        for passage in historical_data["successful_patterns"].get("passages", []):
+            for context in contexts:
+                if context.lower() in passage.lower():
+                    used_topics.append(context)
+    
+    available_contexts = [c for c in contexts if c not in used_topics]
+    if not available_contexts:
+        available_contexts = contexts
+    selected_context = random.choice(available_contexts)
+    
+    structures = [
+        "What is the main idea of this passage?",
+        "Which detail best supports the main idea?",
+        "What is the author's purpose in writing this passage?",
+        "What is the most important information in the passage?",
+        "Which sentence best summarizes the passage?"
+    ]
     
     prompt = f"""Generate a Grade 4 Language Arts question for the lesson on "{lesson}" at {difficulty} difficulty level.
-    The question should:
-    1. Include a short passage (2-4 sentences)
-    2. Ask about the main idea or key details
-    3. Have 4 multiple choice options (A, B, C, D)
-    4. Include explanations for wrong answers
-    5. Provide a step-by-step solution
-    6. Use grade-appropriate vocabulary
-    7. Have clear and unambiguous wording
-    8. Use simple sentence structures appropriate for Grade 4
-    9. Ensure options are clearly distinct and not ambiguous
-    {feedback_guidance}
-    
-    Format the question exactly like this example:
-    Read the following passage and answer the question.
-    
-    [Your 2-4 sentence passage here]
-    
-    [Your question here]
-    
-    A) [First option]
-    B) [Second option]
-    C) [Third option]
-    D) [Fourth option]
-    
-    Correct Answer: [Letter]
-    
-    Explanation for wrong answers:
-    A) [Explanation why A is wrong - skip if A is correct]
-    B) [Explanation why B is wrong - skip if B is correct]
-    C) [Explanation why C is wrong - skip if C is correct]
-    D) [Explanation why D is wrong - skip if D is correct]
-    
-    Solution:
-    [Step-by-step guidance on how to solve this question]"""
+
+{language_guidance}
+
+Content Requirements:
+1. Write a passage about {selected_context}
+2. Use {random.choice(structures)} as your question
+3. Create 4 multiple choice options
+4. Include brief explanations
+5. Provide 3-4 solution steps
+
+Format:
+Read the following passage and answer the question.
+
+[Passage]
+
+[Question]
+
+A) [Option]
+B) [Option]
+C) [Option]
+D) [Option]
+
+Correct Answer: [Letter]
+
+Explanation for wrong answers:
+[One clear sentence per wrong answer]
+
+Solution:
+[3-4 simple steps]"""
 
     return qc_service._generate_with_gpt(prompt)
 
 def extract_feedback(result: QualityCheckResult) -> list:
     """Extract actionable feedback from quality check results"""
     feedback = []
+    
+    # Extract passage topic for variety tracking
+    content = result.content if hasattr(result, 'content') else ""
+    if content:
+        passage_match = re.search(r'Read the following passage.*?\n\n(.*?)\n\n', content, re.DOTALL)
+        if passage_match:
+            passage = passage_match.group(1)
+            feedback.append(f"Previous passage about: {passage}")
+    
+    # Extract specific feedback by criterion
     for criterion, score in result.criterion_scores.items():
         if score < 0.99:
-            # Extract the actual feedback message after the criterion name
             criterion_feedback = result.feedback.split(f"{criterion}:", 1)
             if len(criterion_feedback) > 1:
-                feedback.append(criterion_feedback[1].strip())
+                # For language feedback, extract specific issues
+                if criterion == "language_quality":
+                    issues = criterion_feedback[1].split(".")
+                    for issue in issues:
+                        if "sentence" in issue.lower() or "structure" in issue.lower():
+                            feedback.append(f"Language pattern to improve: {issue.strip()}")
+                else:
+                    feedback.append(criterion_feedback[1].strip())
+    
     return feedback
 
 def main():
-    """Generate and test questions, building our test harness"""
+    """Generate and test questions with improved output"""
     load_dotenv()
     
     # Initialize services
@@ -336,10 +393,9 @@ def main():
     # Setup Supabase
     setup_supabase(session, supabase_url, headers)
     
-    # Define our test matrix
     lessons = ["main_idea", "supporting_details", "authors_purpose"]
     difficulties = ["easy", "medium", "hard"]
-    target_per_combination = 5  # Number of good examples to generate per lesson/difficulty combo
+    target_per_combination = 5
     
     total_generated = 0
     total_passed = 0
@@ -347,11 +403,10 @@ def main():
     try:
         for lesson in lessons:
             for difficulty in difficulties:
-                print(f"\nGenerating questions for lesson: {lesson}, difficulty: {difficulty}")
-                print("=" * 80)
+                print(f"\n🎯 {lesson.upper()} - {difficulty.upper()}")
+                print("=" * 40)
                 
-                # Load historical feedback at the start of each lesson/difficulty combination
-                historical_feedback = get_historical_feedback(session, supabase_url, headers, lesson, difficulty)
+                historical_data = get_historical_feedback(session, supabase_url, headers, lesson, difficulty)
                 
                 good_examples = 0
                 attempts = 0
@@ -362,99 +417,77 @@ def main():
                     attempts += 1
                     total_generated += 1
                     
-                    print(f"\nAttempt {attempts}/{max_attempts} (Good examples: {good_examples}/{target_per_combination})")
+                    print(f"\n📝 Attempt {attempts}/{max_attempts} ({good_examples}/{target_per_combination} passed)")
                     
                     try:
-                        # Generate a question with both historical and recent feedback
-                        content = generate_question(qc_service, lesson, difficulty, feedback_history, historical_feedback)
-                        print("\nGenerated question:")
-                        print("-" * 40)
-                        print(content)
-                        print("-" * 40)
+                        content = generate_question(qc_service, lesson, difficulty, feedback_history, historical_data)
                         
-                        # Check its quality
-                        print("\nChecking quality...")
+                        # Check quality
                         result = qc_service.check_quality(content)
                         
-                        # Extract feedback for future generations
-                        if not result.passed:
-                            new_feedback = extract_feedback(result)
-                            feedback_history.extend(new_feedback)
+                        # Simplified results display
+                        scores = result.criterion_scores
+                        print("\n📊 Scores:")
+                        for criterion, score in scores.items():
+                            status = "✅" if score >= 0.99 else "❌"
+                            print(f"{status} {criterion}: {score:.2f}")
                         
-                        # Save the example regardless of whether it passed or failed
+                        if not result.passed:
+                            print("\n❗ Failed criteria:", ", ".join(result.failed_criteria))
+                        
+                        # Save example
                         example = {
                             "content": content,
                             "quality_status": "good" if result.passed else "bad",
-                            "quality_criterion": "completeness",  # Default to completeness for generated
+                            "quality_criterion": "completeness",
                             "mutation_type": "original",
                             "lesson": lesson,
                             "difficulty_level": difficulty,
                             "metadata": {
-                                "scores": {k: round(v, 2) for k, v in result.criterion_scores.items()},
+                                "scores": {k: round(v, 2) for k, v in scores.items()},
                                 "failed_criteria": result.failed_criteria,
                                 "feedback": {
-                                    criterion: feedback
+                                    criterion: feedback.strip()
                                     for criterion, feedback in [f.split(':', 1) for f in result.feedback.split('\n') if ':' in f]
-                                } if result.feedback else {},
-                                "generation_attempt": attempts,
-                                "feedback_history": feedback_history[-3:] if feedback_history else []  # Keep last 3 pieces of feedback
+                                } if result.feedback else {}
                             }
                         }
                         
-                        # Save example once and get its ID
                         saved_example = save_example(session, supabase_url, headers, example)
                         
                         if result.passed:
                             good_examples += 1
                             total_passed += 1
-                            print("✓ Question passed quality check!")
+                            print("\n✨ Question passed!")
                             
-                            # Generate mutations from good examples
-                            print("\nGenerating mutations...")
+                            # Generate mutations (simplified output)
+                            print("🧬 Generating mutations...")
                             mutations = qc_service.generate_mutations(TestExample(**example))
                             for mutation in mutations:
                                 mutation_dict = mutation.dict()
-                                mutation_dict.pop('id', None)  # Remove id as it will be generated by Supabase
-                                
-                                # Keep track of which good example this was mutated from
+                                mutation_dict.pop('id', None)
                                 if saved_example and saved_example.get("id"):
                                     mutation_dict["metadata"] = {
                                         "mutation_from": saved_example["id"],
-                                        "mutation_type": mutation_dict["mutation_type"].lower(),
-                                        "original_scores": example.get("metadata", {}).get("scores", {}),
-                                        "feedback": mutation.feedback if hasattr(mutation, 'feedback') else {},
-                                        "original_content": example["content"]  # Store the original content for reference
+                                        "mutation_type": mutation_dict["mutation_type"].lower()
                                     }
-                                
                                 save_example(session, supabase_url, headers, mutation_dict)
-                        else:
-                            print("✗ Question failed quality check")
-                            print("\nFailed criteria:", ", ".join(result.failed_criteria))
-                            print("\nFeedback:")
-                            print(result.feedback)
                         
-                        # Avoid rate limits
                         time.sleep(1)
                         
                     except Exception as e:
-                        print(f"Error in generation/testing loop: {str(e)}")
-                        print(f"Full error: {type(e).__name__}: {str(e)}")
+                        print(f"❌ Error: {str(e)}")
                         continue
                 
-                print(f"\nCompleted {lesson} {difficulty}: {good_examples}/{target_per_combination} good examples")
-                if feedback_history:
-                    print("\nFeedback collected for improvement:")
-                    for idx, feedback in enumerate(feedback_history, 1):
-                        print(f"{idx}. {feedback}")
+                print(f"\n📋 Summary for {lesson}/{difficulty}:")
+                print(f"✓ Generated {good_examples}/{target_per_combination} good examples")
         
-        # Print final statistics
-        print("\nGeneration complete!")
-        print(f"Total questions generated: {total_generated}")
-        print(f"Questions that passed QC: {total_passed}")
-        print(f"Success rate: {(total_passed/total_generated)*100:.2f}%")
+        # Final stats
+        print("\n🏁 Generation complete!")
+        print(f"📊 Success rate: {(total_passed/total_generated)*100:.1f}%")
         
     except Exception as e:
-        print(f"Error in main process: {str(e)}")
+        print(f"❌ Fatal error: {str(e)}")
         raise
 
 if __name__ == "__main__":
