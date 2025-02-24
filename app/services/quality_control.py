@@ -1,6 +1,7 @@
 from typing import List, Dict, Optional, Tuple
 import json
 import requests
+from requests.adapters import HTTPAdapter, Retry
 from datetime import datetime
 from app.models.test_harness import (
     TestExample,
@@ -12,6 +13,7 @@ from app.models.test_harness import (
 )
 import os
 from dotenv import load_dotenv
+import time
 
 class QualityControlService:
     """Service for evaluating question quality against strict criteria"""
@@ -21,6 +23,21 @@ class QualityControlService:
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             raise ValueError("Missing OpenAI API key")
+            
+        # Setup session with retry logic
+        self.session = requests.Session()
+        retries = Retry(
+            total=5,  # Increased from 3 to 5
+            backoff_factor=2,  # Increased from 1 to 2
+            status_forcelist=[429, 500, 502, 503, 504]
+        )
+        # Set longer timeouts for the adapter
+        adapter = HTTPAdapter(max_retries=retries, pool_maxsize=100, pool_connections=100)
+        self.session.mount('https://', adapter)
+        
+        # Set default timeouts
+        self.session.timeout = (10, 90)  # (connect timeout, read timeout)
+        
         self.metrics = QualityMetrics()
         
         # Define evaluation criteria and their weights
@@ -92,7 +109,7 @@ class QualityControlService:
         }
     
     def _call_openai(self, messages, temperature=0.2, response_format=None):
-        """Make a request to OpenAI's chat completions API"""
+        """Make a request to OpenAI's chat completions API with retries"""
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
@@ -106,14 +123,37 @@ class QualityControlService:
         if response_format:
             data["response_format"] = response_format
             
-        response = requests.post(
-            "https://api.openai.com/v1/chat/completions",
-            headers=headers,
-            json=data,
-            timeout=30
-        )
-        response.raise_for_status()
-        return response.json()
+        max_retries = 5
+        retry_delay = 2
+        last_error = None
+        
+        for attempt in range(max_retries):
+            try:
+                print(f"Making API call (attempt {attempt + 1}/{max_retries})...")
+                response = self.session.post(
+                    "https://api.openai.com/v1/chat/completions",
+                    headers=headers,
+                    json=data,
+                    timeout=(10, 30)  # Shorter timeout per attempt since we have retries
+                )
+                response.raise_for_status()
+                return response.json()
+            except requests.exceptions.Timeout as e:
+                last_error = f"Timeout error: {str(e)}"
+                print(f"Timeout on attempt {attempt + 1}")
+            except requests.exceptions.RequestException as e:
+                last_error = f"Request error: {str(e)}"
+                print(f"Request failed on attempt {attempt + 1}")
+            except Exception as e:
+                last_error = f"Unexpected error: {str(e)}"
+                print(f"Unexpected error on attempt {attempt + 1}")
+            
+            if attempt < max_retries - 1:  # Don't sleep on the last attempt
+                print(f"Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+        
+        raise Exception(f"Failed to call OpenAI API after {max_retries} attempts. Last error: {last_error}")
     
     def check_quality(self, content: str) -> QualityCheckResult:
         """
@@ -124,7 +164,9 @@ class QualityControlService:
         total_score = 0
         all_feedback = []
         
-        for criterion, config in self.criteria.items():
+        total_criteria = len(self.criteria)
+        for idx, (criterion, config) in enumerate(self.criteria.items(), 1):
+            print(f"\nEvaluating criterion {idx}/{total_criteria}: {criterion}")
             # Construct the evaluation prompt
             prompt = f"""As a strict educational content evaluator for Grade 4 Language Arts, evaluate this question:
 
@@ -154,12 +196,14 @@ class QualityControlService:
                 if score < 0.9:  # We require very high quality
                     result.failed_criteria.append(criterion)
                     all_feedback.append(f"{criterion}: {feedback}")
+                
+                print(f"✓ Evaluated {criterion} - Score: {score:.2f}")
             
             except Exception as e:
-                print(f"Error evaluating {criterion}: {str(e)}")
+                print(f"✗ Error evaluating {criterion}: {str(e)}")
                 result.criterion_scores[criterion] = 0
                 result.failed_criteria.append(criterion)
-                all_feedback.append(f"Error evaluating {criterion}")
+                all_feedback.append(f"Error evaluating {criterion}: {str(e)}")
         
         # Calculate final score (average of weighted scores)
         final_score = total_score / len(self.criteria)
