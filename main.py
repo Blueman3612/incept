@@ -7,6 +7,7 @@ import os
 # Load environment variables
 load_dotenv()
 
+from app.api.v1.articles import router as articles_router
 from app.services.openai_service import OpenAIService
 from pydantic import BaseModel
 
@@ -32,6 +33,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(articles_router, prefix="/api/v1")
 
 # Initialize OpenAI service
 openai_service = OpenAIService()

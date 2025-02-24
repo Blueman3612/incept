@@ -2,11 +2,15 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 import uuid
 import json
+import logging
 
 from app.schemas.article import ArticleGenerateRequest, ArticleInDB, DifficultyLevel
 from app.db.base import get_supabase
 from app.services.openai_service import OpenAIService
 
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ArticleService:
     """Service for handling article-related operations."""
@@ -34,6 +38,7 @@ class ArticleService:
             
             # Parse the JSON response
             content_data = json.loads(generated_content["content"])
+            logger.info(f"Successfully generated content for topic: {request.topic}")
             
             # Create article record
             article = ArticleInDB(
@@ -52,14 +57,27 @@ class ArticleService:
                 examples=content_data["examples"]
             )
             
+            # For testing, return the article without storing if Supabase is not configured
+            if not self.supabase:
+                logger.warning("Supabase not configured, skipping storage")
+                return article
+
             # Store in Supabase
-            await self._store_article(article)
+            try:
+                await self._store_article(article)
+                logger.info(f"Successfully stored article with ID: {article.id}")
+            except Exception as e:
+                logger.error(f"Failed to store article in database: {str(e)}")
+                # Return the generated article even if storage fails
+                return article
             
             return article
             
         except json.JSONDecodeError as e:
+            logger.error(f"Error parsing generated content: {str(e)}")
             raise Exception(f"Error parsing generated content: {str(e)}")
         except Exception as e:
+            logger.error(f"Error in article generation process: {str(e)}")
             raise Exception(f"Error in article generation process: {str(e)}")
 
     async def _store_article(self, article: ArticleInDB) -> None:
@@ -80,6 +98,17 @@ class ArticleService:
             # Convert enum to string
             data["difficulty_level"] = data["difficulty_level"].value
             
-            self.supabase.table("articles").insert(data).execute()
+            # Log the data being sent to Supabase
+            logger.debug(f"Attempting to store article data: {data}")
+            
+            # Insert data into Supabase
+            result = self.supabase.table("articles").insert(data).execute()
+            
+            if not result.data:
+                raise Exception("No data returned from Supabase insert operation")
+                
+            logger.info(f"Successfully stored article in Supabase with ID: {article.id}")
+            
         except Exception as e:
+            logger.error(f"Error storing article in database: {str(e)}")
             raise Exception(f"Error storing article in database: {str(e)}") 

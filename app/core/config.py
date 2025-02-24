@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
+    # OpenAI Settings
+    OPENAI_API_KEY: str
+    GPT_MODEL: str = "gpt-4-turbo-preview"
+
     class Config:
         env_file = ".env"
         case_sensitive = True

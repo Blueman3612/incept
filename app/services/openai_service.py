@@ -1,11 +1,17 @@
 import os
-from openai import OpenAI
+from openai import AsyncOpenAI
 from typing import Dict, Any
+import json
+import logging
 from app.schemas.article import ArticleGenerateRequest, DifficultyLevel
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class OpenAIService:
     def __init__(self):
-        self.client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
         self.model = os.getenv("GPT_MODEL", "gpt-4-turbo-preview")
 
     async def generate_educational_article(
@@ -32,7 +38,11 @@ class OpenAIService:
                         "content": """You are an expert educational content creator, specializing in K-8 education.
                         Your content is engaging, age-appropriate, and aligned with educational standards.
                         You create well-structured articles that include clear explanations, relevant examples,
-                        and key concepts that students should understand."""
+                        and key concepts that students should understand.
+                        
+                        IMPORTANT: Your response must be valid JSON with no control characters or special formatting.
+                        Use regular quotes (") for JSON strings and escape any quotes within the content.
+                        Do not include any text before or after the JSON object."""
                     },
                     {"role": "user", "content": prompt}
                 ],
@@ -40,13 +50,40 @@ class OpenAIService:
                 max_tokens=2000
             )
             
+            # Get the response content
+            content = response.choices[0].message.content.strip()
+            
+            # Validate JSON structure
+            try:
+                parsed_content = json.loads(content)
+                required_fields = ["title", "content", "key_concepts", "examples"]
+                for field in required_fields:
+                    if field not in parsed_content:
+                        raise ValueError(f"Missing required field: {field}")
+                if not isinstance(parsed_content["key_concepts"], list):
+                    raise ValueError("key_concepts must be a list")
+                if not isinstance(parsed_content["examples"], list):
+                    raise ValueError("examples must be a list")
+                
+                # Clean up any potential issues with the content
+                parsed_content["content"] = parsed_content["content"].replace("\r", "")
+                content = json.dumps(parsed_content)
+                
+            except json.JSONDecodeError as e:
+                logger.error(f"Invalid JSON in response: {content}")
+                raise ValueError(f"OpenAI response was not valid JSON: {str(e)}")
+            except ValueError as e:
+                logger.error(f"Invalid response structure: {content}")
+                raise ValueError(f"Invalid response structure: {str(e)}")
+            
             return {
-                "content": response.choices[0].message.content,
+                "content": content,
                 "model_used": self.model,
                 "tokens_used": response.usage.total_tokens
             }
             
         except Exception as e:
+            logger.error(f"Error generating article: {str(e)}")
             raise Exception(f"Error generating article: {str(e)}")
     
     def _create_article_prompt(self, request: ArticleGenerateRequest) -> str:
@@ -82,12 +119,19 @@ class OpenAIService:
         
         Keywords to include: {', '.join(request.keywords) if request.keywords else 'No specific keywords required'}
         
-        Format the response in the following JSON structure:
+        Respond ONLY with a valid JSON object using this exact structure:
         {{
-            "title": "Article Title",
-            "content": "Main article content with clear paragraphs",
+            "title": "Your engaging title here",
+            "content": "Your main article content here, with proper paragraph breaks using \\n",
             "key_concepts": ["concept1", "concept2", "concept3"],
             "examples": ["example1", "example2", "example3"]
         }}
+        
+        IMPORTANT: 
+        1. Your entire response must be a single JSON object
+        2. Do not include any text before or after the JSON
+        3. Use proper escaping for quotes and newlines
+        4. Use only plain text with \n for line breaks
+        5. Make sure the JSON is valid and can be parsed
         """
         return prompt.strip() 
