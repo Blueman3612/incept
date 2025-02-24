@@ -1,0 +1,179 @@
+Gauntlet Incept Project (Generate Educational Content)
+
+- Context
+  - We are building Incept, a product that generates compelling educational content tailored to students interests
+    - All educational content is obsolete.  Every textbook, lesson plan, quiz, homework assignment, Khan video, test, etc.  You can generate educational content that is tailored to exactly what a student knows and doesn't know.  The generated content is also super compelling because it is tailored to the student's interests.
+      - All types (textbooks, tests, explainer videos, questions, articles, worked examples, diagrams, educational standards, study guides, interactive videos, simulations, games, AR/VR) 
+      - All subjects (math, language, reading, science, social studies, etc...)
+      - All grade levels (PreK, K-8, HS, College, etc...)
+    - Incept™ will be one of the most used LLMs in the world.  1.5B kids will pound on it for hours/day as it generates personalized content/lessons for their 16+ years of formal education.  It needs to be both cloud based(LLM) and device based (SLM).
+    - It is easy to generate high quality training/fine tuning/multi-shot example data because K-12 curriculum is widely available for 100 years.  Plenty to gather into CommonCoreCrawl and can synthetically generate as much data as needed.
+    - Multi-LLM. 
+      - Different LLMs will generate better content in different subjects and different modalities.
+      - Educational content is a political flashpoint and will be censored by LLMs.  Can't be tied to just 1.
+      - We need different price points/speed for product packaging.
+    - Batch mode is acceptable through 2025.  Realtime after that.
+    - The foundation needs to be built on learning science/direct instruction, not constructionist/inquiry models.
+  - Part of Incept is Common Core Crawl
+    - you can't build incept without a source of high quality educational content.  
+    - Common Core Crawl is the part of incept that searches the internet for sources of high quality educational content and parses it into the common core crawl database so it can used by incept to train / prompt LLMs
+- Goal
+  - The goal of this project is to generate K-8 better educational content that delivers better learning outcomes for students because the content is high quality.
+  - We are scoping this project to courses composed of just articles and questions
+    - DI style articles deliver better outcomes because they are shorter, clearer, and based on worked examples
+    - High quality question banks are deep (so they can't be gamed) and difficulty-tiered so that the hard questions meet or exceed what is on a rigorous standardized test 
+  - We are scoping this project to just those courses where we can leverage existing content. As of the latest check, language 3-8 and science 6-8 and math 6-8
+  - There are plenty of opportunities to expand scope in the future
+    - additional subjects (e.g. social studies) and grade levels (e.g. 3-5 science)
+    - additional content types (videos, interactive scripts, quizzes, textbooks, simulations with manipulatives, VR/AR)
+- Assignment
+  - Given a course definition (a course is defined by a subject, grade level, and a sequence of lessons) deliver the course itself (sequence of articles and question banks), and publish the working Incept API endpoints (tag, grade, generate for both article and question) that were used to generate the course.  
+  - Inputs
+    - Use the Academics team Course definitions 
+      - lists of lessons (a lesson is an educational standard broken into bite-sized pieces) by subject and grade level
+      - use our current lessons as examples of baseline quality
+      - [https://docs.google.com/spreadsheets/d/1GMCEXqSVFZ-l-nMDGvPl6eOWhuZw29z6rYDhoQgJMZs/edit?gid=0#gid=0](https://docs.google.com/spreadsheets/d/1GMCEXqSVFZ-l-nMDGvPl6eOWhuZw29z6rYDhoQgJMZs/edit?gid=0#gid=0)
+    - Use the lightCI common core crawl (CCC) database for example questions, and articles
+      - all content is tagged with source, content type, subject, grade, standard
+        - sources are where the content came from (e.g. ck12, khan)
+        - content type is either question, article, video
+        - subject is math english science social studies
+        - grades are K-12
+        - standard is a CCSS string (for math and english) or NGSS string (for science)
+        - questions
+          - difficulty 1, 2, 3 for easy, medium, hard
+          - interaction type - MCQ FRQ
+      - inventory
+        - [https://docs.google.com/spreadsheets/d/1lOorlDtToCKNcOVBIcLFMYrz3dANSCAWAQAISUqBZl0/edit?gid=0#gid=0](https://docs.google.com/spreadsheets/d/1lOorlDtToCKNcOVBIcLFMYrz3dANSCAWAQAISUqBZl0/edit?gid=0#gid=0)
+      - limitations
+        - content is NOT tagged with lesson level - you will have to write a lesson tagger to accurately tag content to the specific lesson it applies to
+        - hard questions are missing on most standards - you will need to use IXL to add missing tagged examples
+        - articles are missing on most standards - you will need to use article examples from IXL or infer the articles based on the question types.
+      - here's the API guide for fetching content programatically
+        - [https://docs.google.com/document/d/1CurvQyCGHL6_zuWXeY8--d9dYi0nIse9HSKSatk3yhw/edit?tab=t.0#heading=h.9kn1guva9bzy](https://docs.google.com/document/d/1CurvQyCGHL6_zuWXeY8--d9dYi0nIse9HSKSatk3yhw/edit?tab=t.0#heading=h.9kn1guva9bzy)
+      - here's how to connect directly to the database with a database tool
+        - [https://docs.google.com/document/d/16_wYiiTdhAqjDlxPQW-oZzBDmVpDfIaS1f1eU66cqzw/edit?tab=t.0](https://docs.google.com/document/d/16_wYiiTdhAqjDlxPQW-oZzBDmVpDfIaS1f1eU66cqzw/edit?tab=t.0)
+      - here's the "browser" app
+        - [https://ccc-light-consulting.vercel.app/](https://ccc-light-consulting.vercel.app/)
+    - Use the AE.Studio 1edtech Extended QTI Implementation (Beta) to store both example and generated content
+      - 1EdTech is a learning standards organization that creates and governs technical standards for digital education and assessment.
+      - Question and Test Interoperability (QTI) 3.0 is the 1edtech specification that provides an XML format for exchanging assessment items (questions) and tests (made up of parts and sections) between systems that author content (e.g. Incept), systems that store content (e.g. CCC, LOR software like Learning Explorer) and systems that deliver content to students (e.g. LMS software like Canvas, Moodle, or test administration systems like Edulastic, Mastery Connect) 
+      - QTI 3.0 does not specify a database storage format (DDL), or a JSON format, or a basic CRUD API (alll needed to implement useful systems)
+      - Our implementation has embraced the QTI 3.0 spec, but has extended it by providing a CRUD API that takes an easy to work with JSON representation for each type of content that QTI supports
+        - [https://docs.google.com/document/d/16cIsRjdXXcxOKUXQNzpQ0P86RJk1u9h_AcwXS8IvXIY/edit?tab=t.0](https://docs.google.com/document/d/16cIsRjdXXcxOKUXQNzpQ0P86RJk1u9h_AcwXS8IvXIY/edit?tab=t.0)
+      - In QTI, an AssessmentTest is made up TestParts, which are made up of Sections
+      - Each Section can contain sub-Sections or AssessmentItems (an item is a question)
+      - AssessmentStimulus (a text article) can be created and referenced by an AssessmentItem
+      - Typically, only questions and question banks would be stored in QTI.  articles, lessons, and courses wouldn't be stored in QTI but instead stored in different 1edtech spec implementation, but we're going to stretch QTI beyond its intended use to avoid introducing additional project dependencies.
+      - Here is how to Map the generated course and its components to 1edtech QTI
+        - Diagram
+          - 
+        - **Course (AssessmentTest):** Each course is represented as an AssessmentTest.
+        - **Lesson (TestPart):** Each lesson within the course is a TestPart that contains two sections.
+        - **Article Section (Section):** This section holds worked example AssessmentItems each referencing the shared AssessmentStimulus 
+        - **Article (AssessmentStimulus)**: the formatted article with embedded worked examples
+        - **Question Bank Section:** This section holds question AssessmentItems. Each question includes metadata indicating its difficulty level.
+      - Here is how to Map a generated question to QTI
+        - A high quality question contains the following parts
+          - **stimuli** - e.g. a passage to read. optional
+          - **images/diagrams** - optional
+          - **prompt**
+          - **interaction type** - e.g. MCQ or FRQ
+          - **choices** - for MCQ. includes the correct choice, and distractors
+          - **correct answer**
+          - **wrong answer explanations** - for MCQ, for each distractor, explains why that distractor can't be correct
+          - **solution** - step by step guidance on how to solve this question. each worked example in an article is a solution
+          - **full explanation** - includes solution and for MCQ wrong answer explanations
+          - **grading criteria **- for FRQ, explains how to grade
+        - In a QTI AssessmentItem
+          - use qti-item-body to contain all of the following 
+            - **prompt**
+            - **stimuli**
+            - **images/diagrams**
+            - **interaction type** including choices for MCQ
+              - use qti-simple-choice for as the **interaction type** for MCQs
+              - use qti-text-entry-interaction as the **interaction type **for FRQs
+            - use qti-feedback-inline for **wrong answer explanations** for each distractor
+          - use qti-response-declaration for the **correct answer**
+          - use qti-feeback-block use="explanation" for the **full explanation**
+          - use qti-feedback-block use="solution" for the **solution**
+          - use qti-rubric-block use="scoring" for **grading criteria**
+        - Diagram
+          - 
+        - 1 Backlink
+          - all parts present [Here is how to Map a generated question to QTI](https://workflowy.com/#/51cf21cb53e3)
+  - Outputs
+    - a link showing your generated course displayed by a simple course visualizer
+    - published endpoints w/ human and AI readable documentation for your 6 endpoints
+    - each content generator has 3 API endpoints. for the question content generator
+      - tagQuestion - given a question, return the subject, grade, standard, lesson, difficulty of the question
+      - gradeQuestion - given a tagged question, return pass/fail, a filled out score card showing how the question scored on each dimension of the rubric, and if it fails, actionable feedback on how to fix it.
+      - generateQuestion - for a set of tags, or for a given example question:
+        - input tags - given a subject, grade, standard, lesson, and difficulty, generate a question with the given tags that passes the grader 
+        - input example question -> generate a variant of the question that assesses the same knowledge as the input question but with different prompt, choices, and answer. the generated question has the same tags as the input question and passes the grader.
+    - Diagram
+      - 
+- Here are the spikyPOVs on how to generate quality content
+  - You can't generate 99%+ quality educational content without an LLM-as-a-judge automated QC system.
+  - Building an LLM-as-a-judge QC system without a robust test harness is a recipe for disaster. Tweaking prompts or swapping LLMs without regression tests is like overhauling a legacy codebase with a weak test suite - each fix introducing multiple new errors and making the codebase worse instead of better.
+  - Precision of 99% is the most important metric.  We can afford to reject a few good quality questions (low recall) as long as we don't let bad quality content get out to students (high precision). 
+    - Note: In machine learning there are 3 metrics for measuring the accuracy of a classification model (in this case your qc system is a classification model classifying content as pass/fail). 
+      - precision (on a scale from 0 to 100%, how well your system rejects/fails low quality content) 
+      - recall (on a scale from 0 to 100%, how well your system accepts/passes high quality content)
+      - f1 score (the harmonic mean of the two)
+  - The easiest way to improve precision is by having a great library of bad examples.  The best bad examples are engineered to put pressure on only one part of the quality bar.  When the qc system fails to reject the bad example you know exactly which part of the qc system that you need to fix.
+  - Bootstrap your project with bad examples by using LLMs to create slight variations of known good examples—one per quality criterion—until your library spans the entire quality bar. In software engineering, this is called mutation testing: intentionally tweaking good content to test your regression test suite.
+  - When your generator is live, any low-quality output must be added to your test harness as a bad example. This immediate feedback lowers your precision score and forces you to fix the flaw, ensuring that similar errors won’t escape again.
+  - Do your question generator system (questions, then question banks) before article generator (worked examples, then articles), and then course generator (lessons, course) last
+  - Start by getting your test harness, qc system, and generator system to 99% precision for one lesson, one difficulty before expanding to all difficulty levels and then additional lessons.
+- Here are spikyPOVs about what makes great content for this assignment
+  - What makes a great question?
+    - consistent with the preceding teaching article
+    - appropriate categorization (subject, grade, standard, lesson, difficulty)
+    - all parts present [Here is how to Map a generated question to QTI](https://workflowy.com/#/51cf21cb53e3)
+    - designated correct answer is accurate
+    - none of the distractors can be considered correct
+    - at least 2 distractors for multiple choice must be plausible. e.g. the correct answer can't be obvious because half the distractors are ridiculous
+    - the right answer can't stand out so that students can guess the right answer without knowing the concept. e.g. it is longest or the shortest or the only red
+    - clear explanations for each wrong answer - students should be able to learn from the wrong answer explanations
+    - clear solution for how to get the correct answer
+    - across all parts of the question that are displayed to the student
+      - grade level appropriate language
+      - consistent wording that is clear direct and unambiguous
+      - grammatically correct
+      - properly formatted (use vision)
+  - What makes a great article?
+    - Appropriate categorization (subject, grade, standard, lesson)
+    - Explicitly (vs. Direct Instruction style vs. Inquiry-based learning style) teaches, w/ worked examples, the concepts and procedures required to successfully complete easy med and hard questions that follow.
+    - Worked examples should break down steps in a way that accommodates students with lower working memory capacity
+    - factually accurate
+    - grade level appropriate language
+    - clear and unambiguous wording
+    - properly formatted
+    - consistent explanations throughout the course (i.e. the same vocabulary and explanations are used for lessons and the prerequisite lessons)
+  - What makes a great question bank?
+    - Appropriate categorization (subject, grade, standard, lesson)
+    - covers all aspects of the lesson content - contains enough different question types for students to demonstrate they've acquired all the knowledge in the article
+    - The question bank should be deep enough so that it can't be easily gamed — at least 100 distinct questions for each difficulty level.
+- QC First Content Generator Architecture
+  - lesson tagger - tagQuestionWithLesson - specifically for your subject and grade level, given a question tagged correctly with the standard that question is in, returns the specific lesson within the standard that this question should be tagged with.
+    - with good prompting, LLMs paired with context about each lesson from the  (name, description, transcripts of the video, sample questions, data taken from the IXL website) can accurately match questions to a lesson.
+  - test harness - measureAccuracy - runs gradeQuestion on each good and bad example and returns accuracy (precision, recall, and f1) scores on your grader. 
+    - store good and bad examples in the QTI database using metadata tags to distinguish them from student usable content
+    - make sure each example you add to the test harness is **fully** tagged (including lesson) with source, content-type, subject, grade, standard, lesson, difficulty.  good examples must be correctly tagged (don't let any incorrect tagging go into your test harness or it will be a disaster).  only bad examples can have incorrect tags.
+    - gauntlet name - name of student
+    - expected result - pass / fail
+    - expected score card - pass / fail values for each dimension of the rubric
+  - grader - the implementation of gradeQuestion endpoint
+    - implements the academics team definition of what makes high quality content using high quality examples and LLM-as-Judge prompting
+    - grades content as pass fail w/ scorecard and feedback
+  - generator - the implementation of the generateQuestion endpoint
+    - iteratively calls the internal generator and grader until a question is generated that passes the quality bar.  the passing question is tagged, saved, and returned
+  - internal generator - generateQuestionInternal - generates a question without sending it to QC.  Once your QC system is at 99% precision, you can measure pass % of your internal generator by measuring the number of passes / total.
+  - tagger - the implementation of the tagQuestion endpoint - specifically for your subject and grade level
+    - given a question, return the subject, grade, standard, lesson, difficulty of the question
+    - raise an error if the question is not within your subject and grade level 
+    - raise an error if you can't match it to a standard, lesson, or difficulty
+    - when your QTI database is filled out with questions across all standards, lessons, and difficulties, LLMs can find the closest match to questions in your
+  - diagram
+    - 

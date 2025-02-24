@@ -9,7 +9,6 @@ load_dotenv()
 
 from app.api.v1.articles import router as articles_router
 from app.services.openai_service import OpenAIService
-from pydantic import BaseModel
 
 # Get settings
 API_TITLE = "Educational Content Generation API"
@@ -40,12 +39,6 @@ app.include_router(articles_router, prefix="/api/v1")
 # Initialize OpenAI service
 openai_service = OpenAIService()
 
-class ContentRequest(BaseModel):
-    topic: str
-    grade_level: str
-    content_type: str
-    additional_instructions: Optional[str] = ""
-
 @app.get("/")
 async def root():
     """Root endpoint returning API information."""
@@ -54,26 +47,4 @@ async def root():
         "version": API_VERSION,
         "docs_url": "/docs",
         "redoc_url": "/redoc"
-    }
-
-@app.post("/api/v1/generate-content")
-async def generate_content(request: ContentRequest):
-    """
-    Generate educational content using GPT-4.
-    
-    Parameters:
-    - topic: The main topic for the content
-    - grade_level: Target grade level (K-8)
-    - content_type: Type of content (article, quiz, lesson_plan)
-    - additional_instructions: Optional specific requirements
-    """
-    try:
-        content = await openai_service.generate_educational_content(
-            topic=request.topic,
-            grade_level=request.grade_level,
-            content_type=request.content_type,
-            additional_instructions=request.additional_instructions
-        )
-        return content
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) 
+    } 

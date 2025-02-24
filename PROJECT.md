@@ -1,7 +1,20 @@
-# Educational Content Generation API
+# Educational Content Generation API for Language Arts Grade 4
 
 ## Project Overview
-This API service generates and manages educational content for K-8 students, providing capabilities for article generation, question generation, content tagging, and grading. The service uses GPT-4 via OpenAI's API for content generation.
+This API service specializes in generating high-quality educational content for Grade 4 Language Arts, with a focus on achieving 99%+ precision in content quality. The service leverages GPT-4 via OpenAI's API for content generation and utilizes existing content from the Common Core Crawl (CCC) database for training and validation.
+
+Key Objectives:
+- Generate Direct Instruction (DI) style articles optimized for Grade 4 Language Arts
+- Create comprehensive question banks with 100+ questions per difficulty level
+- Maintain 99%+ precision in content quality through automated QC
+- Leverage existing CCC database content for training and validation
+- Integrate with Common Core State Standards (CCSS) for Language Arts
+
+Project Deliverables:
+1. Working API endpoints for content generation, tagging, and grading
+2. Generated course content displayed through a course visualizer
+3. Complete test harness with regression testing capabilities
+4. Integration with CCC database for content examples and validation
 
 ## Technical Stack
 - **Backend Framework**: FastAPI
@@ -9,60 +22,269 @@ This API service generates and manages educational content for K-8 students, pro
 - **AI Model**: OpenAI GPT-4
 - **Deployment**: AWS EC2
 - **Language**: Python 3.9+
+- **Content Storage**: 1EdTech QTI 3.0 Implementation
+- **Content Source**: Common Core Crawl (CCC) Database
 
 ## Core Features
-1. **Content Generation**
-   - Article generation for K-8 educational topics using GPT-4
-   - Question generation based on educational content
+1. **Article Generation System**
+   - DI-style article generation for Grade 4 Language Arts
+   - Worked examples integration
+   - Quality control system with 99%+ precision
+   - Integration with CCC database for examples
    
-2. **Content Tagging**
-   - Automated tagging of articles
-   - Automated tagging of questions
+2. **Question Generation System**
+   - Deep question banks (100+ per difficulty level)
+   - Three-tiered difficulty system (easy, medium, hard)
+   - Question variation generation
+   - MCQ and FRQ support
    
-3. **Content Grading**
-   - Article quality assessment
-   - Question quality and difficulty assessment
+3. **Quality Control System**
+   - LLM-as-judge automated QC
+   - Test harness with good/bad examples
+   - Continuous quality improvement process
+   - Mutation testing for quality criteria
+
+## Data Sources
+1. **Common Core Crawl (CCC) Database**
+   - Pre-tagged content by source, type, subject, grade, and standard
+   - Content types: questions, articles, videos
+   - Question metadata: difficulty (1-3), interaction type (MCQ/FRQ)
+   - Access via API or direct database connection
+
+2. **Academic Team Course Definitions**
+   - Lesson sequences by subject and grade level
+   - Baseline quality examples
+   - Educational standards mapping
+
+## Content Storage (QTI Implementation)
+
+### Course Structure in QTI
+1. **Course (AssessmentTest)**
+   - Complete Grade 4 Language Arts course
+   - Organized sequence of lessons
+
+2. **Lesson (TestPart)**
+   - Contains Article and Question Bank sections
+   - Maps to specific educational standards
+
+3. **Article Section (Section)**
+   - Contains worked example AssessmentItems
+   - References shared AssessmentStimulus
+
+4. **Question Bank Section**
+   - Collection of AssessmentItems
+   - Metadata for difficulty levels
+   - Comprehensive coverage of lesson content
 
 ## API Endpoints
 
-### 1. Generate Content
-- Endpoint: `/api/v1/generate-content`
+### Article Endpoints
+1. **Tag Article**
+- Endpoint: `/api/v1/articles/tag`
 - Method: POST
-- Description: Generates educational content (articles, quizzes, lesson plans) using GPT-4
+- Description: Tags articles with subject (Language Arts), grade (4), standard, and lesson
 - Request Body:
   ```json
   {
-    "topic": "string",
-    "grade_level": "string",
-    "content_type": "string",
-    "additional_instructions": "string (optional)"
+    "content": "string",
+    "metadata": {
+      "title": "string",
+      "format": "string"
+    }
   }
   ```
 
-### 2. Generate Questions
-- Endpoint: `/api/v1/questions/generate`
-- Method: POST
-- Description: Generates questions based on educational content
-
-### 3. Tag Articles
-- Endpoint: `/api/v1/articles/tag`
-- Method: POST
-- Description: Automatically tags articles with relevant metadata
-
-### 4. Tag Questions
-- Endpoint: `/api/v1/questions/tag`
-- Method: POST
-- Description: Automatically tags questions with relevant metadata
-
-### 5. Grade Articles
+2. **Grade Article**
 - Endpoint: `/api/v1/articles/grade`
 - Method: POST
-- Description: Assesses the quality and appropriateness of articles
+- Description: Assesses article quality against DI style requirements
+- Request Body:
+  ```json
+  {
+    "content": "string",
+    "metadata": {
+      "tags": ["string"],
+      "grade_level": 4,
+      "subject": "Language Arts"
+    }
+  }
+  ```
 
-### 6. Grade Questions
+3. **Generate Article**
+- Endpoint: `/api/v1/articles/generate`
+- Method: POST
+- Description: Generates DI-style articles for Grade 4 Language Arts
+- Request Body:
+  ```json
+  {
+    "lesson": "string",
+    "standard": "string",
+    "additional_instructions": "string"
+  }
+  ```
+
+### Question Endpoints
+1. **Tag Question**
+- Endpoint: `/api/v1/questions/tag`
+- Method: POST
+- Description: Tags questions with subject, grade, standard, lesson, and difficulty
+- Request Body:
+  ```json
+  {
+    "question": "string",
+    "metadata": {
+      "format": "string"
+    }
+  }
+  ```
+
+2. **Grade Question**
 - Endpoint: `/api/v1/questions/grade`
 - Method: POST
-- Description: Assesses the quality and difficulty level of questions
+- Description: Assesses question quality and provides detailed feedback
+- Request Body:
+  ```json
+  {
+    "question": "string",
+    "metadata": {
+      "tags": ["string"],
+      "difficulty": "string"
+    }
+  }
+  ```
+
+3. **Generate Question**
+- Endpoint: `/api/v1/questions/generate`
+- Method: POST
+- Description: Generates questions or variations based on tags or example
+- Request Body:
+  ```json
+  {
+    "type": "new|variation",
+    "lesson": "string",
+    "difficulty": "string",
+    "example_question": "string"
+  }
+  ```
+
+## Content Requirements
+
+### DI-Style Articles
+- Clear, concise explanations
+- Step-by-step instruction
+- Embedded worked examples
+- Grade-appropriate vocabulary
+- Consistent terminology
+- Clear learning objectives
+- Factually accurate content
+- Properly formatted with visual elements
+- Consistent explanations across related lessons
+
+### Question Components
+- Stimuli (optional passage/context)
+- Images/diagrams (when applicable)
+- Clear prompt
+- Interaction type (MCQ/FRQ)
+- Answer choices (for MCQ)
+- Correct answer
+- Wrong answer explanations
+- Step-by-step solution
+- Full explanation
+- Grading criteria (for FRQ)
+
+### Question Banks
+- Minimum 100 questions per difficulty level
+- Three difficulty tiers:
+  - Easy: Basic comprehension
+  - Medium: Application
+  - Hard: Analysis and synthesis
+- Varied question types
+- Comprehensive coverage of lesson content
+- Cannot be easily gamed
+- Consistent with teaching articles
+- Clear explanations for wrong answers
+- Grade-appropriate language
+- Proper formatting
+
+## Development Approach
+
+### Phase 0: Setup
+1. Configure CCC database access
+2. Set up QTI storage implementation
+3. Initialize test harness framework
+
+### Phase 1: Question Generator
+1. Implement test harness
+2. Develop QC system
+3. Start with single lesson/difficulty
+4. Achieve 99% precision
+5. Expand to all difficulty levels
+6. Scale to additional lessons
+
+### Phase 2: Article Generator
+1. Implement DI style templates
+2. Develop worked examples
+3. Integrate with question banks
+4. Achieve 99% precision
+
+### Phase 3: Integration
+1. Combine articles and question banks
+2. Implement lesson sequencing
+3. Deploy complete system
+
+## Quality Control
+
+### Test Harness
+- Store examples in QTI database
+- Maintain good/bad example pairs
+- Track precision metrics
+- Automated regression testing
+- Mutation testing for quality criteria
+- Immediate feedback loop for failures
+
+### QC System
+- LLM-as-judge implementation
+- Rubric-based assessment
+- Immediate feedback loop
+- Continuous improvement process
+- Bootstrap with known good/bad examples
+- Mutation testing for edge cases
+
+### Quality Metrics
+- Primary: 99%+ precision
+- Secondary: Recall optimization
+- Tracking: F1 score
+- Continuous monitoring and improvement
+
+### Error Handling
+- Failed content added to test harness
+- Automatic quality regression detection
+- Systematic quality improvements
+- Clear error feedback and suggestions
+
+## Setup Instructions
+1. Clone the repository
+2. Create a virtual environment: `python -m venv venv`
+3. Activate the virtual environment:
+   - Windows: `.\venv\Scripts\activate`
+4. Install dependencies: `pip install -r requirements.txt`
+5. Copy `.env.example` to `.env` and configure:
+   ```
+   OPENAI_API_KEY=your_key
+   GPT_MODEL=gpt-4-turbo-preview
+   SUPABASE_URL=your_url
+   SUPABASE_KEY=your_key
+   ```
+6. Run the application: `uvicorn main:app --reload`
+
+## Testing
+- Run tests: `pytest`
+- Run with coverage: `pytest --cov=app tests/`
+- View test harness metrics: `python scripts/test_harness_metrics.py`
+
+## Documentation
+- API Documentation: `http://localhost:8000/docs`
+- ReDoc Interface: `http://localhost:8000/redoc`
 
 ## Project Structure
 ```
@@ -72,31 +294,30 @@ This API service generates and manages educational content for K-8 students, pro
 │   │   ├── v1/
 │   │   │   ├── articles.py
 │   │   │   └── questions.py
-│   ├── core/
-│   │   ├── config.py
-│   │   └── security.py
-│   ├── db/
-│   │   ├── base.py
-│   │   └── session.py
-│   ├── models/
-│   │   ├── article.py
-│   │   └── question.py
-│   ├── schemas/
-│   │   ├── article.py
-│   │   └── question.py
-│   └── services/
-│       ├── openai_service.py
-│       ├── article_service.py
-│       └── question_service.py
-├── tests/
-│   ├── api/
-│   ├── services/
-│   └── conftest.py
-├── .env
-├── .gitignore
-├── main.py
-├── requirements.txt
-└── README.md
+│   │   ├── core/
+│   │   │   ├── config.py
+│   │   │   └── security.py
+│   │   ├── db/
+│   │   │   ├── base.py
+│   │   │   └── session.py
+│   │   ├── models/
+│   │   │   ├── article.py
+│   │   │   └── question.py
+│   │   ├── schemas/
+│   │   │   ├── article.py
+│   │   │   └── question.py
+│   │   └── services/
+│   │       ├── openai_service.py
+│   │       ├── article_service.py
+│   │       └── question_service.py
+│   ├── tests/
+│   │   ├── api/
+│   │   ├── services/
+│   │   └── conftest.py
+│   ├── .env
+│   ├── .gitignore
+│   ├── main.py
+│   └── README.md
 ```
 
 ## Development Guidelines
@@ -106,19 +327,6 @@ This API service generates and manages educational content for K-8 students, pro
 4. Include comprehensive docstrings for all functions and classes
 5. Implement proper error handling and validation
 6. Use environment variables for configuration
-
-## Setup Instructions
-1. Clone the repository
-2. Create a virtual environment: `python -m venv venv`
-3. Activate the virtual environment:
-   - Windows: `.\venv\Scripts\activate`
-   - Unix/MacOS: `source venv/bin/activate`
-4. Install dependencies: `pip install -r requirements.txt`
-5. Copy `.env.example` to `.env` and fill in required values:
-   - Add your OpenAI API key
-   - Configure GPT model (gpt-4-turbo-preview or gpt-4)
-   - Set up Supabase credentials
-6. Run the application: `uvicorn main:app --reload`
 
 ## Environment Variables
 Required environment variables in `.env`:
@@ -143,10 +351,6 @@ SECRET_KEY=your_secret_key_here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
 ```
-
-## Testing
-- Run tests: `pytest`
-- Run with coverage: `pytest --cov=app tests/`
 
 ## Deployment
 Deployment instructions for AWS EC2 will be added as the project progresses.

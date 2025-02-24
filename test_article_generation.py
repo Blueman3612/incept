@@ -10,7 +10,7 @@ console = Console()
 
 def generate_article(payload: dict) -> Optional[dict]:
     """Generate an article with progress indication."""
-    url = "http://localhost:8000/api/v1/articles/generate-article"
+    url = "http://localhost:8000/api/v1/articles/generate"
     headers = {"Content-Type": "application/json"}
 
     with Progress(

@@ -12,7 +12,7 @@ async def get_article_service() -> ArticleService:
     return ArticleService()
 
 
-@router.post("/generate-article", response_model=ArticleResponse, status_code=201)
+@router.post("/generate", response_model=ArticleResponse, status_code=201)
 async def generate_article(
     request: ArticleGenerateRequest,
     article_service: ArticleService = Depends(get_article_service)
