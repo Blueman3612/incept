@@ -1,59 +1,105 @@
 import requests
 import json
+import time
+from typing import Optional
+from rich.console import Console
+from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 
-# API endpoint
-url = "http://localhost:8000/api/v1/articles/generate-article"
+# Initialize Rich console
+console = Console()
 
-# Request payload
-payload = {
-    "topic": "Creative Writing: Building Strong Characters",
-    "grade_level": 4,
-    "subject": "Language Arts",
-    "difficulty": "intermediate",
-    "keywords": ["character development", "personality traits", "dialogue", "description"],
-    "style": "creative"
-}
+def generate_article(payload: dict) -> Optional[dict]:
+    """Generate an article with progress indication."""
+    url = "http://localhost:8000/api/v1/articles/generate-article"
+    headers = {"Content-Type": "application/json"}
 
-# Headers
-headers = {
-    "Content-Type": "application/json"
-}
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        try:
+            # Start the generation task
+            task = progress.add_task("Generating educational article...", total=None)
+            
+            # Make the POST request
+            response = requests.post(url, json=payload, headers=headers)
+            response.raise_for_status()
+            
+            # Mark task as complete
+            progress.update(task, completed=True)
+            
+            return response.json()
+            
+        except requests.exceptions.RequestException as e:
+            progress.update(task, description="[red]Error generating article!")
+            console.print(f"\n[red]Error making request: {e}")
+            if hasattr(e.response, 'text'):
+                console.print(f"[red]Error details: {e.response.text}")
+            return None
+        except Exception as e:
+            progress.update(task, description="[red]Unexpected error!")
+            console.print(f"\n[red]Unexpected error: {e}")
+            return None
 
-try:
-    # Make the POST request
-    response = requests.post(url, json=payload, headers=headers)
+def print_article(article: dict) -> None:
+    """Print the article in a formatted way."""
+    console.print("\n[bold green]Generated Article:[/bold green]")
+    console.rule(style="green")
     
-    # Check if the request was successful
-    response.raise_for_status()
+    # Article metadata
+    console.print(f"[bold blue]ID:[/bold blue] {article['id']}")
+    console.print(f"[bold blue]Title:[/bold blue] {article['title']}")
     
-    # Print the response in a formatted way
-    print("\nGenerated Article:")
-    print("=" * 80)
-    article = response.json()
-    print(f"Article ID: {article['id']}")
-    print(f"Title: {article['title']}")
-    print("-" * 80)
-    print("Content:")
-    print(article['content'])
-    print("-" * 80)
-    print("Key Concepts:")
+    # Content
+    console.rule(style="blue")
+    console.print("[bold]Content:[/bold]")
+    console.print(article['content'])
+    
+    # Key Concepts
+    console.rule(style="blue")
+    console.print("[bold]Key Concepts:[/bold]")
     for concept in article['key_concepts']:
-        print(f"- {concept}")
-    print("-" * 80)
-    print("Examples:")
-    for example in article['examples']:
-        print(f"- {example}")
-    print("-" * 80)
-    print("\nMetadata:")
-    print(f"Grade Level: {article['grade_level']}")
-    print(f"Subject: {article['subject']}")
-    print(f"Difficulty: {article['difficulty_level']}")
-    print(f"Created At: {article['created_at']}")
-    print(f"Tags: {', '.join(article['tags'])}")
+        console.print(f"• {concept}")
     
-except requests.exceptions.RequestException as e:
-    print(f"Error making request: {e}")
-    if hasattr(e.response, 'text'):
-        print(f"Error details: {e.response.text}")
-except Exception as e:
-    print(f"Unexpected error: {e}") 
+    # Examples
+    console.rule(style="blue")
+    console.print("[bold]Examples:[/bold]")
+    for example in article['examples']:
+        console.print(f"• {example}")
+    
+    # Metadata
+    console.rule(style="blue")
+    console.print("[bold]Metadata:[/bold]")
+    console.print(f"[dim]Grade Level:[/dim] {article['grade_level']}")
+    console.print(f"[dim]Subject:[/dim] {article['subject']}")
+    console.print(f"[dim]Difficulty:[/dim] {article['difficulty_level']}")
+    console.print(f"[dim]Created At:[/dim] {article['created_at']}")
+    console.print(f"[dim]Tags:[/dim] {', '.join(article['tags'])}")
+    
+    console.rule(style="green")
+
+def main():
+    # Request payload
+    payload = {
+        "topic": "Creative Writing: Building Strong Characters",
+        "grade_level": 4,
+        "subject": "Language Arts",
+        "difficulty": "intermediate",
+        "keywords": ["character development", "personality traits", "dialogue", "description"],
+        "style": "creative"
+    }
+
+    # Generate the article
+    console.print("[bold]Starting Article Generation[/bold]")
+    article = generate_article(payload)
+    
+    if article:
+        print_article(article)
+        console.print("\n[bold green]✓[/bold green] Article generation completed successfully!")
+    else:
+        console.print("\n[bold red]✗[/bold red] Article generation failed!")
+
+if __name__ == "__main__":
+    main() 

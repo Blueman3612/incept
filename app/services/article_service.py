@@ -3,6 +3,7 @@ from datetime import datetime
 import uuid
 import json
 import logging
+from postgrest.exceptions import APIError
 
 from app.schemas.article import ArticleGenerateRequest, ArticleInDB, DifficultyLevel
 from app.db.base import get_supabase
@@ -16,7 +17,12 @@ class ArticleService:
     """Service for handling article-related operations."""
 
     def __init__(self):
-        self.supabase = get_supabase()
+        try:
+            self.supabase = get_supabase()
+            logger.info("Successfully initialized Supabase client")
+        except Exception as e:
+            logger.error(f"Failed to initialize Supabase client: {str(e)}")
+            self.supabase = None
         self.openai_service = OpenAIService()
 
     async def generate_article(self, request: ArticleGenerateRequest) -> ArticleInDB:
@@ -59,7 +65,7 @@ class ArticleService:
             
             # For testing, return the article without storing if Supabase is not configured
             if not self.supabase:
-                logger.warning("Supabase not configured, skipping storage")
+                logger.warning("Supabase client not available, skipping storage")
                 return article
 
             # Store in Supabase
@@ -99,16 +105,24 @@ class ArticleService:
             data["difficulty_level"] = data["difficulty_level"].value
             
             # Log the data being sent to Supabase
-            logger.debug(f"Attempting to store article data: {data}")
+            logger.debug("Preparing to store article in Supabase")
+            logger.debug(f"Article data: {json.dumps(data, indent=2)}")
             
-            # Insert data into Supabase
-            result = self.supabase.table("articles").insert(data).execute()
-            
-            if not result.data:
-                raise Exception("No data returned from Supabase insert operation")
+            try:
+                # Insert data into Supabase
+                result = self.supabase.table("articles").insert(data).execute()
                 
-            logger.info(f"Successfully stored article in Supabase with ID: {article.id}")
-            
+                if not result.data:
+                    raise Exception("No data returned from Supabase insert operation")
+                    
+                logger.info(f"Successfully stored article in Supabase with ID: {article.id}")
+                logger.debug(f"Supabase response: {json.dumps(result.data, indent=2)}")
+                
+            except APIError as e:
+                logger.error(f"Supabase API error: {str(e)}")
+                logger.error(f"Error details: {e.details if hasattr(e, 'details') else 'No details available'}")
+                raise Exception(f"Supabase API error: {str(e)}")
+                
         except Exception as e:
             logger.error(f"Error storing article in database: {str(e)}")
             raise Exception(f"Error storing article in database: {str(e)}") 
