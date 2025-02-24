@@ -192,6 +192,10 @@ def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: s
             language_rules = []  # Specific language rules
             common_issues = {}   # Track frequency of issues
             successful_sentences = []  # Examples of good sentence structures
+            transformation_pairs = []  # Store specific before/after transformation examples
+
+            # Track feedback patterns that consistently lead to 0.95 scores
+            language_score_patterns = []
             
             for example in examples:
                 metadata = example.get("metadata", {})
@@ -210,18 +214,41 @@ def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: s
                     simple_sentences = [s for s in sentences if len(s.split()) < 12 and "," not in s]
                     successful_sentences.extend(simple_sentences[:3])  # Take a few examples
                 
-                # Extract specific feedback from language issues
+                # Extract specific before/after examples from language feedback
                 if "language_quality" in metadata.get("feedback", {}):
                     feedback = metadata["feedback"]["language_quality"]
                     
-                    # Extract specific rules or suggestions
+                    # If the score is exactly 0.95, capture what issues led to that score
+                    if scores.get("language_quality") == 0.95:
+                        language_score_patterns.append(feedback[:100])  # Store truncated feedback
+                    
+                    # Look for specific transformation examples (consider X instead of Y)
                     if isinstance(feedback, str):
+                        # Pattern for "instead of X, consider Y"
+                        transformation_matches = re.finditer(r'instead of [\'"]([^\'"].*?)[\'"],?\s*consider [\'"]([^\'"].*?)[\'"]', feedback, re.IGNORECASE)
+                        for match in transformation_matches:
+                            before, after = match.group(1), match.group(2)
+                            transformation_pairs.append((before.strip(), after.strip()))
+                        
+                        # Pattern for "X could be simplified to Y"
+                        simplify_matches = re.finditer(r'[\'"]([^\'"].*?)[\'"] could be simplified to [\'"]([^\'"].*?)[\'"]', feedback, re.IGNORECASE)
+                        for match in simplify_matches:
+                            before, after = match.group(1), match.group(2)
+                            transformation_pairs.append((before.strip(), after.strip()))
+                        
+                        # Pattern for "X could be Y" or "X could become Y"
+                        could_be_matches = re.finditer(r'[\'"]([^\'"].*?)[\'"] could (?:be|become) [\'"]([^\'"].*?)[\'"]', feedback, re.IGNORECASE)
+                        for match in could_be_matches:
+                            before, after = match.group(1), match.group(2)
+                            transformation_pairs.append((before.strip(), after.strip()))
+                        
+                        # Extract specific rules or suggestions
                         rules = re.findall(r'(?:avoid|use|keep|make|ensure|simplif|consider).*?(?:\.|\n)', feedback.lower())
                         language_rules.extend(rules)
                     
                     # Extract specific issues
                     issues = ["complex vocabulary", "complex sentence", "ambiguous", "technical terms", 
-                              "grade level", "vocabulary complexity", "sentence structure"]
+                              "grade level", "vocabulary complexity", "sentence structure", "simplify"]
                     
                     for issue in issues:
                         if issue in feedback.lower():
@@ -235,23 +262,149 @@ def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: s
                 if relevant_rules:
                     prioritized_rules.extend(relevant_rules[:2])  # Add top 2 rules for each issue
             
+            # Extract patterns from content that consistently fails at 0.95
+            common_patterns_095 = []
+            if language_score_patterns:
+                # Look for recurring phrases that appear in multiple 0.95 failures
+                all_text = " ".join(language_score_patterns)
+                common_words = ["could be", "simplified", "ambiguity", "option", "explanation", 
+                               "grade level", "technical", "complex"]
+                for word in common_words:
+                    if all_text.count(word) >= 2:  # If appears multiple times
+                        common_patterns_095.append(word)
+            
             if language_rules:
                 print(f"  • Extracted {len(language_rules)} language rules")
             if successful_sentences:
                 print(f"  • Found {len(successful_sentences)} good sentence examples")
-            
+            if transformation_pairs:
+                print(f"  • Captured {len(transformation_pairs)} specific transformations")
+                
             return {
                 "successful_patterns": successful_patterns,
                 "successful_sentences": successful_sentences[:5],  # Limit to 5 examples
                 "language_rules": prioritized_rules[:7] if prioritized_rules else language_rules[:7],  # Limit to 7 key rules
-                "common_issues": common_issues
+                "common_issues": common_issues,
+                "transformation_pairs": transformation_pairs,
+                "patterns_095": common_patterns_095
             }
             
-        return {"successful_patterns": {}, "language_rules": [], "successful_sentences": [], "common_issues": {}}
+        return {
+            "successful_patterns": {}, 
+            "language_rules": [], 
+            "successful_sentences": [], 
+            "common_issues": {},
+            "transformation_pairs": [],
+            "patterns_095": []
+        }
             
     except Exception as e:
         print(f"❌ History loading error: {str(e)}")
-        return {"successful_patterns": {}, "language_rules": [], "successful_sentences": [], "common_issues": {}}
+        return {
+            "successful_patterns": {}, 
+            "language_rules": [], 
+            "successful_sentences": [], 
+            "common_issues": {},
+            "transformation_pairs": [],
+            "patterns_095": []
+        }
+
+def apply_language_simplification(content: str, historical_data: dict) -> str:
+    """Apply specific language transformations to content based on historical feedback"""
+    if not content or not historical_data:
+        return content
+    
+    print("🔍 Applying language simplifications...")
+    
+    # Extract transformation pairs from historical data
+    transformation_pairs = historical_data.get("transformation_pairs", [])
+    patterns_095 = historical_data.get("patterns_095", [])
+    
+    # Count transformations applied
+    transformations_applied = 0
+    
+    # Make a copy of the content to modify
+    simplified_content = content
+    
+    # Apply specific transformations first (only those from historical feedback)
+    for before, after in transformation_pairs:
+        if before in simplified_content:
+            simplified_content = simplified_content.replace(before, after)
+            transformations_applied += 1
+    
+    # Apply gentler, targeted simplifications that preserve complete explanations
+    
+    # 1. Simplify explanations for wrong answers without truncating
+    explanation_section = re.search(r'Explanation for wrong answers:(.*?)(?:Solution:|$)', simplified_content, re.DOTALL)
+    if explanation_section:
+        explanations = explanation_section.group(1)
+        
+        # Replace overly formal phrases with simpler ones without truncating
+        formal_phrases = {
+            "This is incorrect because": "This is wrong because",
+            "This is not accurate because": "This is wrong because",
+            "This option is incorrect because": "This is wrong because",
+            "not the main idea of the passage": "not what the passage is mostly about",
+            "does not accurately represent": "doesn't match",
+            "does not reflect": "doesn't show",
+            "This answer choice": "This answer",
+            "focuses only on a minor detail": "is just one small part",
+            "evidence from the text": "words from the story"
+        }
+        
+        simplified_explanations = explanations
+        for formal, simple in formal_phrases.items():
+            simplified_explanations = simplified_explanations.replace(formal, simple)
+        
+        # Replace the original explanations with simplified ones
+        simplified_content = simplified_content.replace(explanations, simplified_explanations)
+        
+    # 2. Simplify complex words throughout the content but preserve meaning
+    complex_word_replacements = {
+        "primary purpose": "main purpose",
+        "narrative": "story",
+        "intention": "purpose",
+        "convey information": "give information",
+        "demonstrate": "show",
+        "illustrate": "show",
+        "comprehend": "understand",
+        "implement": "use",
+        "initial": "first",
+        "specifically": "exactly",
+        "ambiguous": "unclear",
+        "determine": "find out",
+        "elaborate": "detailed",
+        "incorporate": "include",
+        "substantial": "major",
+        "additional": "more",
+        "sufficient": "enough",
+        "extensively": "widely",
+        "appropriate": "right",
+        "comprehension": "understanding"
+    }
+    
+    for complex_term, simple_term in complex_word_replacements.items():
+        if complex_term in simplified_content.lower():
+            # Replace the term with case preserved
+            pattern = re.compile(re.escape(complex_term), re.IGNORECASE)
+            simplified_content = pattern.sub(simple_term, simplified_content)
+            transformations_applied += 1
+    
+    # 3. Handle incomplete explanation problem specifically
+    # Check for truncated explanations and fix them
+    truncated_explanations = re.finditer(r'This doesn\'t work because it\'s just a\.', simplified_content)
+    for match in truncated_explanations:
+        # Replace with a complete sentence that makes sense
+        simplified_content = simplified_content.replace(
+            "This doesn't work because it's just a.", 
+            "This doesn't work because it's just a small detail, not the main point."
+        )
+        transformations_applied += 1
+    
+    if transformations_applied > 0:
+        print(f"  • Applied {transformations_applied} gentle language simplifications")
+    
+    return simplified_content
 
 def generate_question(qc_service: QualityControlService, lesson: str, difficulty: str, feedback_history: list, historical_data: dict = None) -> str:
     """Generate a new question using GPT-4 with improved language learning"""
@@ -295,6 +448,12 @@ SPECIAL FOCUS AREAS:
 - Ensure explanations are specific and clear. Avoid vague descriptions.
 - Keep all explanations concrete and directly related to the passage.
 """
+
+    # Add specific transformations learned from feedback
+    if historical_data and "transformation_pairs" in historical_data and historical_data["transformation_pairs"]:
+        language_guidance += "\nSPECIFIC LANGUAGE TRANSFORMATIONS TO FOLLOW:\n"
+        for i, (before, after) in enumerate(historical_data["transformation_pairs"][:5], 1):
+            language_guidance += f"{i}. Use \"{after}\" instead of \"{before}\"\n"
     
     # Select a context not recently used
     contexts = [
@@ -339,8 +498,15 @@ Content Requirements:
 1. Write a passage about {selected_context}
 2. Use {random.choice(structures)} as your question
 3. Create 4 multiple choice options
-4. Include brief explanations
+4. Include COMPLETE explanations for each wrong answer 
 5. Provide 3-4 solution steps
+
+IMPORTANT LANGUAGE GUIDELINES FOR GRADE 4:
+- Use simple words when possible, but don't sacrifice completeness
+- Keep sentences under 15 words when you can
+- Always write COMPLETE explanations that teach why an answer is right or wrong
+- Each wrong answer explanation must be a complete thought with educational value
+- Be historically and factually accurate in all content
 
 FORMAT THE QUESTION EXACTLY LIKE THIS:
 Read the following passage and answer the question.
@@ -357,10 +523,10 @@ D) [Option]
 Correct Answer: [Letter]
 
 Explanation for wrong answers:
-A) [If incorrect: One clear, simple sentence explaining why this is wrong]
-B) [If incorrect: One clear, simple sentence explaining why this is wrong]
-C) [If incorrect: One clear, simple sentence explaining why this is wrong]
-D) [If incorrect: One clear, simple sentence explaining why this is wrong]
+A) [If incorrect: Clear explanation why this is wrong - must be a complete thought]
+B) [If incorrect: Clear explanation why this is wrong - must be a complete thought]
+C) [If incorrect: Clear explanation why this is wrong - must be a complete thought]
+D) [If incorrect: Clear explanation why this is wrong - must be a complete thought]
 
 Solution:
 1. [Simple step]
@@ -368,7 +534,10 @@ Solution:
 3. [Simple step]
 4. [Optional simple step]"""
 
-    return qc_service._generate_with_gpt(prompt)
+    content = qc_service._generate_with_gpt(prompt)
+    
+    # Apply gentler simplification based on learned patterns before returning
+    return apply_language_simplification(content, historical_data)
 
 def extract_feedback(result: QualityCheckResult) -> list:
     """Extract actionable feedback from quality check results"""
@@ -471,6 +640,26 @@ def main():
                         else:
                             print(f"❌ FAILED: {score_display}")
                             print(f"   Issues: {', '.join(result.failed_criteria)}")
+                            
+                            # Extract specific transformation pairs from language quality feedback
+                            if "language_quality" in result.failed_criteria and hasattr(result, 'feedback'):
+                                language_feedback = ""
+                                for line in result.feedback.split("\n"):
+                                    if "language_quality:" in line.lower():
+                                        language_feedback = line
+                                        break
+                                
+                                # Look for specific transformation examples
+                                transformation_matches = re.finditer(
+                                    r'instead of [\'"]([^\'"].*?)[\'"],?\s*consider [\'"]([^\'"].*?)[\'"]', 
+                                    language_feedback, 
+                                    re.IGNORECASE
+                                )
+                                for match in transformation_matches:
+                                    before, after = match.group(1), match.group(2)
+                                    if not any(b == before for b, a in historical_data.get("transformation_pairs", [])):
+                                        historical_data.setdefault("transformation_pairs", []).append((before, after))
+                                        print(f"   ⚡ Learned: Use \"{after}\" instead of \"{before}\"")
                         
                         # Save example
                         example = {
