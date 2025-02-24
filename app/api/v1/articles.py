@@ -1,23 +1,28 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
 
-from app.schemas.article import ArticleGenerateRequest, ArticleResponse
+from app.schemas.article import ArticleGenerateRequest, ArticleInDB, ArticleResponse
 from app.services.article_service import ArticleService
 
 router = APIRouter(prefix="/articles", tags=["articles"])
 
 
-@router.post("/generate", response_model=ArticleResponse)
+async def get_article_service() -> ArticleService:
+    """Dependency to get ArticleService instance."""
+    return ArticleService()
+
+
+@router.post("/generate-article", response_model=ArticleResponse, status_code=201)
 async def generate_article(
     request: ArticleGenerateRequest,
-    article_service: ArticleService = Depends(lambda: ArticleService())
+    article_service: ArticleService = Depends(get_article_service)
 ) -> ArticleResponse:
     """
     Generate an educational article based on the provided parameters.
     
     Args:
-        request (ArticleGenerateRequest): The article generation request parameters
-        article_service (ArticleService): The article service instance
+        request: Article generation parameters including topic, grade level, etc.
+        article_service: Service for article operations (injected)
         
     Returns:
         ArticleResponse: The generated article
@@ -27,7 +32,7 @@ async def generate_article(
     """
     try:
         article = await article_service.generate_article(request)
-        return ArticleResponse.model_validate(article)
+        return article
     except Exception as e:
         raise HTTPException(
             status_code=500,

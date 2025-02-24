@@ -1,6 +1,14 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from datetime import datetime
+from enum import Enum
+
+
+class DifficultyLevel(str, Enum):
+    """Enumeration for article difficulty levels."""
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
 
 
 class ArticleBase(BaseModel):
@@ -25,6 +33,9 @@ class ArticleInDB(ArticleBase):
     tags: List[str] = Field(default_factory=list)
     quality_score: Optional[float] = None
     readability_score: Optional[float] = None
+    difficulty_level: DifficultyLevel
+    key_concepts: List[str] = Field(default_factory=list)
+    examples: List[str] = Field(default_factory=list)
 
 
 class ArticleResponse(ArticleInDB):
@@ -34,9 +45,13 @@ class ArticleResponse(ArticleInDB):
 
 class ArticleGenerateRequest(BaseModel):
     """Model for article generation request."""
-    topic: str = Field(..., min_length=3, max_length=200)
-    grade_level: int = Field(..., ge=1, le=8)
-    subject: str = Field(..., min_length=2, max_length=50)
-    length: str = Field(..., regex="^(short|medium|long)$")
-    keywords: Optional[List[str]] = Field(default_factory=list)
-    style: Optional[str] = Field(default="standard", regex="^(standard|creative|technical)$") 
+    topic: str = Field(..., min_length=3, max_length=200, description="The main topic of the article")
+    grade_level: int = Field(..., ge=1, le=8, description="Target grade level (1-8)")
+    subject: str = Field(..., min_length=2, max_length=50, description="Subject area (e.g., Math, Science)")
+    difficulty: DifficultyLevel = Field(..., description="Difficulty level of the content")
+    keywords: Optional[List[str]] = Field(default_factory=list, description="Key terms or concepts to include")
+    style: Optional[str] = Field(
+        default="standard",
+        pattern="^(standard|creative|technical)$",
+        description="Writing style of the article"
+    ) 
