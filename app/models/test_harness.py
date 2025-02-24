@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from typing import Optional, List
+from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 class QualityStatus(str, Enum):
@@ -40,7 +40,7 @@ class TestExample(BaseModel):
     difficulty_level: DifficultyLevel = Field(..., description="Difficulty level of the question")
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: dict = Field(default_factory=dict, description="Additional metadata about the example")
+    metadata: Dict = Field(default_factory=dict, description="Additional metadata about the example")
 
     class Config:
         use_enum_values = True
@@ -53,13 +53,13 @@ class QualityMetrics(BaseModel):
     precision: float = 0.0
     recall: float = 0.0
     f1_score: float = 0.0
-    metrics_by_criterion: dict = Field(default_factory=dict)
+    metrics_by_criterion: Dict[str, Dict[str, int]] = Field(default_factory=dict)
     last_updated: datetime = Field(default_factory=datetime.utcnow)
 
 class QualityCheckResult(BaseModel):
     """Model for quality check results"""
     passed: bool = False
-    criterion_scores: dict = Field(default_factory=dict)
-    failed_criteria: List[QualityCriterion] = Field(default_factory=list)
+    criterion_scores: Dict[str, float] = {}
+    failed_criteria: List[str] = []
     feedback: str = ""
     metadata: dict = Field(default_factory=dict) 

@@ -1,5 +1,6 @@
-from typing import List, Dict, Optional
-import openai
+from typing import List, Dict, Optional, Tuple
+import json
+import requests
 from datetime import datetime
 from app.models.test_harness import (
     TestExample,
@@ -9,69 +10,167 @@ from app.models.test_harness import (
     QualityStatus,
     MutationType
 )
+import os
+from dotenv import load_dotenv
 
 class QualityControlService:
-    """Service for managing quality control of educational content"""
+    """Service for evaluating question quality against strict criteria"""
     
-    def __init__(self, openai_api_key: str):
-        self.openai_api_key = openai_api_key
-        openai.api_key = openai_api_key
+    def __init__(self):
+        load_dotenv()
+        self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise ValueError("Missing OpenAI API key")
         self.metrics = QualityMetrics()
         
-    async def check_quality(self, content: str, lesson: str, difficulty_level: str) -> QualityCheckResult:
+        # Define evaluation criteria and their weights
+        self.criteria = {
+            "completeness": {
+                "weight": 1.0,
+                "prompt": """Evaluate if the question has all required parts:
+                1. Clear question stem
+                2. Multiple choice options (A, B, C, D)
+                3. Designated correct answer
+                4. Wrong answer explanations
+                5. Step-by-step solution
+                
+                Return a JSON with:
+                {
+                    "score": float between 0-1,
+                    "missing_parts": list of missing elements,
+                    "feedback": specific improvement suggestions
+                }
+                """
+            },
+            "answer_quality": {
+                "weight": 1.0,
+                "prompt": """Evaluate the quality of answers:
+                1. Correct answer is accurate for the question
+                2. No distractors can be considered correct
+                3. At least 2 distractors are plausible
+                4. Correct answer doesn't stand out (length, format, etc.)
+                
+                Return a JSON with:
+                {
+                    "score": float between 0-1,
+                    "issues": list of identified issues,
+                    "feedback": specific improvement suggestions
+                }
+                """
+            },
+            "explanation_quality": {
+                "weight": 1.0,
+                "prompt": """Evaluate the quality of explanations:
+                1. Clear explanation for each wrong answer
+                2. Students can learn from wrong answer explanations
+                3. Solution provides clear step-by-step guidance
+                
+                Return a JSON with:
+                {
+                    "score": float between 0-1,
+                    "weak_points": list of areas needing improvement,
+                    "feedback": specific improvement suggestions
+                }
+                """
+            },
+            "language_quality": {
+                "weight": 1.0,
+                "prompt": """Evaluate the language quality for Grade 4:
+                1. Grade-level appropriate vocabulary
+                2. Clear and unambiguous wording
+                3. Grammatically correct
+                4. Properly formatted
+                
+                Return a JSON with:
+                {
+                    "score": float between 0-1,
+                    "issues": list of language issues,
+                    "feedback": specific improvement suggestions
+                }
+                """
+            }
+        }
+    
+    def _call_openai(self, messages, temperature=0.2, response_format=None):
+        """Make a request to OpenAI's chat completions API"""
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json"
+        }
+        
+        data = {
+            "model": "gpt-4-turbo-preview",
+            "messages": messages,
+            "temperature": temperature
+        }
+        if response_format:
+            data["response_format"] = response_format
+            
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            json=data,
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def check_quality(self, content: str) -> QualityCheckResult:
         """
         Check the quality of a question against all criteria
         Returns a QualityCheckResult with detailed feedback
         """
         result = QualityCheckResult()
-        criterion_prompts = {
-            QualityCriterion.VOCABULARY: """
-                Evaluate if the vocabulary in this Grade 4 Language Arts question is grade-appropriate.
-                Consider:
-                1. Word complexity matches Grade 4 level
-                2. Technical terms are properly introduced
-                3. No unnecessarily complex words
-                Question: {content}
-            """,
-            QualityCriterion.QUESTION_STEM: """
-                Evaluate if the question stem is clear and well-structured for Grade 4.
-                Consider:
-                1. Clear and direct wording
-                2. Single, focused task
-                3. No ambiguity
-                Question: {content}
-            """,
-            QualityCriterion.DISTRACTORS: """
-                Evaluate if the multiple-choice distractors are plausible and well-designed.
-                Consider:
-                1. All distractors are plausible
-                2. No obviously wrong answers
-                3. Distractors test common misconceptions
-                Question: {content}
-            """,
-            # Add other criteria prompts...
-        }
+        total_score = 0
+        all_feedback = []
         
-        all_scores = {}
-        failed_criteria = []
-        
-        for criterion, prompt in criterion_prompts.items():
-            formatted_prompt = prompt.format(content=content)
-            response = await self._evaluate_with_gpt(formatted_prompt)
-            score = self._parse_quality_score(response)
-            all_scores[criterion] = score
+        for criterion, config in self.criteria.items():
+            # Construct the evaluation prompt
+            prompt = f"""As a strict educational content evaluator for Grade 4 Language Arts, evaluate this question:
+
+{content}
+
+{config['prompt']}"""
             
-            if score < 0.9:  # We require very high quality
-                failed_criteria.append(criterion)
+            try:
+                completion = self._call_openai(
+                    messages=[
+                        {"role": "system", "content": "You are a strict educational content evaluator that ensures 99% precision in content quality."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    response_format={ "type": "json_object" }
+                )
+                
+                # Parse the JSON response
+                response_data = json.loads(completion['choices'][0]['message']['content'])
+                score = float(response_data.get("score", 0))
+                feedback = response_data.get("feedback", "No specific feedback provided")
+                
+                # Weight the score
+                weighted_score = score * config["weight"]
+                total_score += weighted_score
+                result.criterion_scores[criterion] = score
+                
+                if score < 0.9:  # We require very high quality
+                    result.failed_criteria.append(criterion)
+                    all_feedback.append(f"{criterion}: {feedback}")
+            
+            except Exception as e:
+                print(f"Error evaluating {criterion}: {str(e)}")
+                result.criterion_scores[criterion] = 0
+                result.failed_criteria.append(criterion)
+                all_feedback.append(f"Error evaluating {criterion}")
         
-        result.criterion_scores = all_scores
-        result.failed_criteria = failed_criteria
-        result.passed = len(failed_criteria) == 0
-        result.feedback = await self._generate_feedback(failed_criteria, content)
+        # Calculate final score (average of weighted scores)
+        final_score = total_score / len(self.criteria)
+        
+        # We require 99% precision, so the threshold is very high
+        result.passed = final_score >= 0.99
+        result.feedback = "\n".join(all_feedback) if all_feedback else "All quality criteria passed!"
         
         return result
     
-    async def generate_mutations(self, example: TestExample) -> List[TestExample]:
+    def generate_mutations(self, example: TestExample) -> List[TestExample]:
         """
         Generate bad examples by mutating a good example
         Returns a list of mutated examples
@@ -92,7 +191,14 @@ class QualityControlService:
         
         for mutation_type, prompt in mutation_prompts.items():
             formatted_prompt = prompt.format(content=example.content)
-            mutated_content = await self._generate_with_gpt(formatted_prompt)
+            completion = self._call_openai(
+                messages=[
+                    {"role": "system", "content": "You are an educational content generator for Grade 4 Language Arts."},
+                    {"role": "user", "content": formatted_prompt}
+                ],
+                temperature=0.7
+            )
+            mutated_content = completion['choices'][0]['message']['content']
             
             mutations.append(
                 TestExample(
@@ -133,60 +239,16 @@ class QualityControlService:
                 
         self.metrics.last_updated = datetime.utcnow()
     
-    async def _evaluate_with_gpt(self, prompt: str) -> str:
-        """Evaluate content quality using GPT-4"""
-        try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4-turbo-preview",
-                messages=[
-                    {"role": "system", "content": "You are a strict educational content evaluator for Grade 4 Language Arts."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.2
-            )
-            return response.choices[0].message.content
-        except Exception as e:
-            raise Exception(f"Error evaluating with GPT: {str(e)}")
-    
-    async def _generate_with_gpt(self, prompt: str) -> str:
+    def _generate_with_gpt(self, prompt: str) -> str:
         """Generate content using GPT-4"""
         try:
-            response = await openai.ChatCompletion.acreate(
-                model="gpt-4-turbo-preview",
+            response = self._call_openai(
                 messages=[
                     {"role": "system", "content": "You are an educational content generator for Grade 4 Language Arts."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.7
             )
-            return response.choices[0].message.content
+            return response['choices'][0]['message']['content']
         except Exception as e:
-            raise Exception(f"Error generating with GPT: {str(e)}")
-    
-    def _parse_quality_score(self, gpt_response: str) -> float:
-        """Parse GPT's response into a quality score between 0 and 1"""
-        # Implement parsing logic based on GPT's response format
-        # This is a simplified version - you'd want more robust parsing
-        if "excellent" in gpt_response.lower():
-            return 1.0
-        elif "good" in gpt_response.lower():
-            return 0.8
-        elif "acceptable" in gpt_response.lower():
-            return 0.6
-        else:
-            return 0.4
-    
-    async def _generate_feedback(self, failed_criteria: List[QualityCriterion], content: str) -> str:
-        """Generate detailed feedback for failed criteria"""
-        if not failed_criteria:
-            return "All quality criteria passed."
-            
-        prompt = f"""
-            Generate specific feedback for improving this Grade 4 Language Arts question:
-            Question: {content}
-            Failed criteria: {', '.join([c.value for c in failed_criteria])}
-            Provide specific suggestions for each criterion.
-        """
-        
-        feedback = await self._generate_with_gpt(prompt)
-        return feedback 
+            raise Exception(f"Error generating with GPT: {str(e)}") 
