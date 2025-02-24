@@ -186,18 +186,41 @@ class QualityControlService:
                 # Parse the JSON response
                 response_data = json.loads(completion['choices'][0]['message']['content'])
                 score = float(response_data.get("score", 0))
-                feedback = response_data.get("feedback", "No specific feedback provided")
+                
+                # Get detailed feedback based on criterion
+                if criterion == "completeness":
+                    missing_parts = response_data.get("missing_parts", [])
+                    feedback = response_data.get("feedback", "No specific feedback provided")
+                    if missing_parts:
+                        feedback = f"Missing parts: {', '.join(missing_parts)}. {feedback}"
+                elif criterion == "answer_quality":
+                    issues = response_data.get("issues", [])
+                    feedback = response_data.get("feedback", "No specific feedback provided")
+                    if issues:
+                        feedback = f"Issues found: {', '.join(issues)}. {feedback}"
+                elif criterion == "explanation_quality":
+                    weak_points = response_data.get("weak_points", [])
+                    feedback = response_data.get("feedback", "No specific feedback provided")
+                    if weak_points:
+                        feedback = f"Weak points: {', '.join(weak_points)}. {feedback}"
+                else:  # language_quality
+                    issues = response_data.get("issues", [])
+                    feedback = response_data.get("feedback", "No specific feedback provided")
+                    if issues:
+                        feedback = f"Language issues: {', '.join(issues)}. {feedback}"
                 
                 # Weight the score
                 weighted_score = score * config["weight"]
                 total_score += weighted_score
                 result.criterion_scores[criterion] = score
                 
-                if score < 0.9:  # We require very high quality
+                if score < 0.99:  # We require 99% quality for each criterion
                     result.failed_criteria.append(criterion)
                     all_feedback.append(f"{criterion}: {feedback}")
                 
                 print(f"✓ Evaluated {criterion} - Score: {score:.2f}")
+                if score < 0.99:
+                    print(f"  Failed criterion: {feedback}")
             
             except Exception as e:
                 print(f"✗ Error evaluating {criterion}: {str(e)}")
@@ -208,8 +231,8 @@ class QualityControlService:
         # Calculate final score (average of weighted scores)
         final_score = total_score / len(self.criteria)
         
-        # We require 99% precision, so the threshold is very high
-        result.passed = final_score >= 0.99
+        # A question passes only if ALL criteria score >= 0.99
+        result.passed = len(result.failed_criteria) == 0
         result.feedback = "\n".join(all_feedback) if all_feedback else "All quality criteria passed!"
         
         return result
