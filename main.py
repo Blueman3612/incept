@@ -7,8 +7,7 @@ import os
 # Load environment variables
 load_dotenv()
 
-from app.api.v1.articles import router as articles_router
-from app.services.openai_service import OpenAIService
+from app.api.v1.questions import router as questions_router
 
 # Get settings
 API_TITLE = "Educational Content Generation API"
@@ -34,10 +33,7 @@ app.add_middleware(
 )
 
 # Include routers
-app.include_router(articles_router, prefix="/api/v1")
-
-# Initialize OpenAI service
-openai_service = OpenAIService()
+app.include_router(questions_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():
