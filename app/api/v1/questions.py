@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
-from typing import List, Dict, Optional
-from pydantic import BaseModel
+from typing import List, Dict, Optional, Any
+from pydantic import BaseModel, Field
 from app.services.question_service import QuestionService
 from app.schemas.question import (
     QuestionGradeRequest,
@@ -13,6 +13,7 @@ from app.schemas.question import (
 )
 import sys
 import os
+from app.services.grader_service import grade_question
 
 # Add the scripts directory to the path so we can import from generate_questions.py
 scripts_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "scripts")
@@ -28,37 +29,46 @@ async def get_question_service() -> QuestionService:
     return QuestionService()
 
 
-@router.post("/grade", response_model=QuestionGradeResponse, status_code=200)
-async def grade_question(
-    request: QuestionGradeRequest,
-    question_service: QuestionService = Depends(get_question_service)
-) -> QuestionGradeResponse:
+# Request/Response models for the API
+class GradeQuestionRequest(BaseModel):
+    """Request model for grading a question."""
+    question: str = Field(..., description="The question content to evaluate")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata about the question")
+
+class GradeQuestionResponse(BaseModel):
+    """Response model for the question grading endpoint."""
+    overall_result: str = Field(..., description="The overall result (pass/fail)")
+    message: str = Field(..., description="A message summarizing the grading result")
+    scores: Dict[str, float] = Field(..., description="Scores for each quality criterion")
+    criteria_results: Dict[str, bool] = Field(..., description="Pass/fail result for each criterion")
+    critical_issues: List[str] = Field(default_factory=list, description="List of critical issues that caused the content to fail")
+    confidence: float = Field(..., description="Confidence score of the evaluation (0.0-1.0)")
+    feedback: Dict[str, str] = Field(..., description="Detailed feedback for each criterion")
+
+@router.post("/grade", response_model=GradeQuestionResponse)
+async def grade_question_endpoint(request: GradeQuestionRequest):
     """
-    Grade a question against quality criteria for educational content.
+    Grade a question for quality based on predefined criteria.
     
-    The grading is based on analyzing hundreds of good examples from our test database.
-    Each question is evaluated on multiple criteria including completeness, answer quality,
-    explanation quality, and language quality.
+    The grader evaluates the question on four key criteria:
+    - Completeness: All required components are present
+    - Answer Quality: Answers and distractors are well-designed
+    - Explanation Quality: Explanations are clear and educational
+    - Language Quality: Language is appropriate and grammatically correct
     
-    Args:
-        request: Question content to grade and optional metadata
-        question_service: Service for question operations (injected)
-        
-    Returns:
-        QuestionGradeResponse: Detailed grading information including overall pass/fail,
-        scores per criterion, and specific improvement suggestions
-        
-    Raises:
-        HTTPException: If question grading fails
+    The grader is extremely strict to ensure high precision. Critical issues will
+    automatically cause a fail, regardless of the overall score. The system
+    prioritizes precision over recall, meaning it may reject some good content
+    to ensure no bad content is approved.
+    
+    Returns detailed scores, feedback, and any critical issues identified.
     """
     try:
-        result = await question_service.grade_question(request)
+        # Call the grader service
+        result = grade_question(request.question, request.metadata)
         return result
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to grade question: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to grade question: {str(e)}")
 
 
 @router.post("/generate", response_model=QuestionGenerateResponse, status_code=200)
