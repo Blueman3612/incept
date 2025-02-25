@@ -6,10 +6,11 @@ This script takes good examples and creates mutations for each quality criterion
 generating bad examples that can be used to train our grading system.
 
 Usage:
-    python generate_mutations_fixed.py [--sample N] [--dry-run]
+    python generate_mutations_fixed.py [--sample N] [--dry-run] [--exclude-mutated]
     
     --sample N: Process only N random examples (default: 10)
     --dry-run: Show what would be generated without saving to the database
+    --exclude-mutated: Exclude examples that have already been used for mutations
 """
 
 import os
@@ -194,13 +195,14 @@ BAD EXAMPLE:
         return None
 
 
-def create_mutations(sample_size=10, dry_run=False):
+def create_mutations(sample_size=10, dry_run=False, exclude_mutated=False):
     """
     Create mutations from good examples to generate bad examples.
     
     Args:
         sample_size: Number of good examples to sample for mutation
         dry_run: If True, don't save to database
+        exclude_mutated: If True, exclude examples that have already been used for mutations
     """
     # Load environment variables
     load_dotenv()
@@ -229,14 +231,45 @@ def create_mutations(sample_size=10, dry_run=False):
     
     # Get good examples
     print("🔍 Fetching good examples...")
+    
+    # If exclude_mutated is True, we need to get the list of already mutated examples
+    mutated_original_ids = []
+    if exclude_mutated:
+        # Fetch the IDs of original examples that have already been mutated
+        mutated_response = requests.get(
+            f"{supabase_url}/rest/v1/test_examples",
+            headers=headers,
+            params={
+                "quality_status": "eq.bad",
+                "select": "id,metadata"  # Get the full metadata object
+            }
+        )
+        
+        if mutated_response.status_code == 200:
+            # Extract the original IDs from the metadata
+            bad_examples = mutated_response.json()
+            print(f"Found {len(bad_examples)} bad examples in database")
+            
+            for item in bad_examples:
+                metadata = item.get("metadata", {})
+                if isinstance(metadata, dict):
+                    original_id = metadata.get("original_id")
+                    if original_id and original_id not in mutated_original_ids:
+                        mutated_original_ids.append(original_id)
+            
+            print(f"Found {len(mutated_original_ids)} already mutated examples to exclude")
+    
+    # Get good examples, excluding those that have already been mutated if requested
+    query_params = {
+        "quality_status": "eq.good",
+        "select": "id,content,quality_criterion,lesson,difficulty_level,metadata",
+        "limit": sample_size * 2  # Get more than we need to ensure diversity
+    }
+    
     response = requests.get(
         f"{supabase_url}/rest/v1/test_examples",
         headers=headers,
-        params={
-            "quality_status": "eq.good",
-            "select": "id,content,quality_criterion,lesson,difficulty_level,metadata",
-            "limit": sample_size * 2  # Get more than we need to ensure diversity
-        }
+        params=query_params
     )
     
     if response.status_code != 200:
@@ -244,6 +277,21 @@ def create_mutations(sample_size=10, dry_run=False):
         return
     
     all_examples = response.json()
+    
+    # If we're excluding mutated examples, filter them out
+    if exclude_mutated and mutated_original_ids:
+        filtered_examples = []
+        excluded_count = 0
+        
+        for example in all_examples:
+            example_id = example.get("id")
+            if example_id in mutated_original_ids:
+                excluded_count += 1
+            else:
+                filtered_examples.append(example)
+        
+        print(f"Excluded {excluded_count} previously mutated examples, {len(filtered_examples)} good examples remain")
+        all_examples = filtered_examples
     
     # Sample randomly from the examples
     if len(all_examples) > sample_size:
@@ -387,7 +435,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Generate mutations from good examples')
     parser.add_argument('--sample', type=int, default=10, help='Number of good examples to sample (default: 10)')
     parser.add_argument('--dry-run', action='store_true', help='Show what would be generated without saving to the database')
+    parser.add_argument('--exclude-mutated', action='store_true', help='Exclude examples that have already been used for mutations')
     args = parser.parse_args()
     
     # Run the mutation generator
-    create_mutations(sample_size=args.sample, dry_run=args.dry_run) 
+    create_mutations(sample_size=args.sample, dry_run=args.dry_run, exclude_mutated=args.exclude_mutated) 
