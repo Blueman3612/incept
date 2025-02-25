@@ -228,7 +228,7 @@ async def calculate_calibration_curves(sample_size=None, update_metadata=True):
     print("=" * 50)
     for criterion, curve in curves.items():
         print(f"  • {criterion}: +{curve:.3f} (avg score was {avg_scores[criterion]:.3f})")
-    
+        
     print("\n📋 COPY-PASTE CODE FOR QUESTION SERVICE:")
     print("=" * 50)
     code = f"""
