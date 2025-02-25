@@ -15,6 +15,7 @@ import os
 import json
 import logging
 import requests
+import re
 from typing import Dict, Any, Tuple, List
 from dotenv import load_dotenv
 
@@ -24,6 +25,32 @@ logger = logging.getLogger(__name__)
 
 # Load environment variables
 load_dotenv()
+
+def preprocess_question_content(content: str) -> str:
+    """
+    Preprocess question content to remove misleading boilerplate text that could trigger false critical issues.
+    
+    Args:
+        content: The raw question content
+        
+    Returns:
+        Cleaned question content
+    """
+    # Pattern to match the misleading passage reference with the following instruction
+    pattern = r"Read the following passage and answer the question\.\s*Read the question carefully and select the best answer\."
+    
+    # Replace with just the second instruction
+    cleaned_content = re.sub(pattern, "Read the question carefully and select the best answer.", content)
+    
+    # Remove any HTML tags if present (another reported critical issue)
+    cleaned_content = re.sub(r"<[^>]*>", "", cleaned_content)
+    
+    # If content was modified, log that preprocessing was applied
+    if cleaned_content != content:
+        logger.info("Preprocessing applied to question content")
+    
+    return cleaned_content
+
 
 class QualityGrader:
     """
@@ -148,11 +175,14 @@ class QualityGrader:
                 }
             }
         
+        # Preprocess the content to remove misleading text and HTML tags
+        preprocessed_content = preprocess_question_content(content)
+        
         # Get grade level from metadata if available
         grade_level = metadata.get("grade_level", 4) if metadata else 4
         
         # Get scores, feedback, and critical issues from LLM evaluation
-        scores, feedback, critical_issues, confidence = self._evaluate_with_llm(content, grade_level)
+        scores, feedback, critical_issues, confidence = self._evaluate_with_llm(preprocessed_content, grade_level)
         
         # Apply the stricter evaluation logic
         criteria_results = {}
@@ -192,7 +222,8 @@ class QualityGrader:
             "critical_issues": critical_issues,
             "confidence": confidence,
             "feedback": feedback,
-            "failure_reason": failure_reason if not overall_pass else None
+            "failure_reason": failure_reason if not overall_pass else None,
+            "preprocessed": preprocessed_content != content  # Flag if preprocessing was applied
         }
         
         # Log the reason for failure if applicable
