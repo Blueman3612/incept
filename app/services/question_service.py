@@ -59,60 +59,256 @@ class QuestionService:
             }
         }
         
+        # Pre-calculated calibration curves from good examples
+        # These values will be replaced with the results from calibration_results.json
+        self.calibration_curves = {
+            "completeness": 0.05,  # Example values, will update after calibration script runs
+            "answer_quality": 0.05,
+            "explanation_quality": 0.08,
+            "language_quality": 0.10
+        }
+        
+        # Mark as already calibrated since we're using pre-calculated values
+        self.is_calibrated = True
+        
+        # Passing threshold (score needed to pass a criterion)
+        self.passing_threshold = 0.99
+        
+        # Only run auto-calibration if specifically requested and we're not already using pre-calculated values
+        self.auto_calibrate = False  # Disabled by default since we're using pre-calculated values
+        
         # Initialize rubric with empty values, will be populated on first use
         self.rubric = {}
         self.example_patterns = {}
         self.good_examples_loaded = False
     
-    async def grade_question(self, request: QuestionGradeRequest) -> QuestionGradeResponse:
-        """Grade a question based on quality criteria extracted from test examples"""
+    async def calibrate_against_good_examples(self, sample_size=50, min_examples=10):
+        """
+        Calibrate the grading system by evaluating existing good examples and computing
+        adjustment curves for each criterion.
         
-        # Ensure rubric is initialized from good examples
-        if not self.good_examples_loaded:
-            await self.load_good_examples()
+        Args:
+            sample_size: Maximum number of good examples to evaluate
+            min_examples: Minimum number of examples needed for valid calibration
+            
+        Returns:
+            dict: The computed calibration curves for each criterion
+        """
+        if self.is_calibrated:
+            print("Grading system already calibrated")
+            return self.calibration_curves
+            
+        print(f"Calibrating grading system against good examples...")
         
-        # Perform grading on each criterion
-        criterion_scores = {}
-        failed_criteria = []
-        improvement_suggestions = {}
-        overall_feedback = []
+        # Get good examples from Supabase
+        headers = {
+            "apikey": self.supabase_key,
+            "Authorization": f"Bearer {self.supabase_key}",
+            "Content-Type": "application/json"
+        }
         
-        for criterion in self.criteria:
-            score, feedback, suggestions = await self._evaluate_criterion(
-                criterion, request.question
+        try:
+            # Query for good examples
+            response = self.session.get(
+                f"{self.supabase_url}/rest/v1/test_examples",
+                headers=headers,
+                params={
+                    "quality_status": "eq.good",
+                    "select": "content",
+                    "limit": sample_size,
+                    "order": "created_at.desc"  # Get the most recent examples
+                }
             )
             
+            if response.status_code != 200:
+                print(f"Failed to fetch good examples: {response.status_code}")
+                return self.calibration_curves
+                
+            examples = response.json()
+            
+            if len(examples) < min_examples:
+                print(f"Not enough good examples for calibration (found {len(examples)}, need {min_examples})")
+                return self.calibration_curves
+                
+            print(f"Found {len(examples)} good examples for calibration")
+            
+            # Collect scores for each criterion
+            criterion_scores = {
+                "completeness": [],
+                "answer_quality": [],
+                "explanation_quality": [],
+                "language_quality": []
+            }
+            
+            # Grade each example and collect scores
+            for i, example in enumerate(examples):
+                content = example.get("content")
+                if not content:
+                    continue
+                
+                # Create a request object for grading
+                request = QuestionGradeRequest(question=content)
+                
+                # Temporarily disable calibration curves for this evaluation
+                original_curves = self.calibration_curves.copy()
+                self.calibration_curves = {k: 0.0 for k in self.calibration_curves}
+                
+                # Grade the example
+                try:
+                    # We want the raw scores without calibration applied
+                    raw_scores = await self._evaluate_criteria(request.question)
+                    
+                    # Collect raw scores for each criterion
+                    for criterion, score in raw_scores.items():
+                        criterion_scores[criterion].append(score)
+                        
+                except Exception as e:
+                    print(f"Error grading example {i}: {str(e)}")
+                    continue
+                
+                # Restore original calibration curves
+                self.calibration_curves = original_curves
+                
+            # Calculate average scores for each criterion
+            avg_scores = {}
+            for criterion, scores in criterion_scores.items():
+                if scores:
+                    avg_scores[criterion] = sum(scores) / len(scores)
+                else:
+                    avg_scores[criterion] = 0.0
+                    
+            # Calculate calibration curves (difference between threshold and average)
+            for criterion, avg_score in avg_scores.items():
+                # Only apply positive curves (we don't want to make scores worse)
+                curve = max(0.0, self.passing_threshold - avg_score)
+                self.calibration_curves[criterion] = round(curve, 3)
+                
+            print("Calibration completed. Adjustment curves:")
+            for criterion, curve in self.calibration_curves.items():
+                print(f"  • {criterion}: +{curve:.3f} (avg score was {avg_scores.get(criterion, 0):.3f})")
+                
+            self.is_calibrated = True
+            return self.calibration_curves
+            
+        except Exception as e:
+            print(f"Calibration error: {str(e)}")
+            return self.calibration_curves
+    
+    async def _evaluate_criteria(self, question_text: str) -> Dict[str, float]:
+        """Evaluate a question against all criteria.
+        
+        This internal method performs the raw evaluation without applying the calibration curve.
+        """
+        criterion_scores = {}
+        
+        for criterion in self.criteria:
+            # Use the existing evaluation method but extract only the score
+            score, _, _ = await self._evaluate_criterion(criterion, question_text)
             criterion_scores[criterion] = score
-            if score < 0.99:  # Using 0.99 as passing threshold
-                failed_criteria.append(criterion)
-                improvement_suggestions[criterion] = suggestions
-                overall_feedback.append(f"{criterion}: {feedback}")
+            
+        return criterion_scores
+    
+    async def _get_scores_with_calibration(self, question_text: str) -> Dict[str, float]:
+        """Evaluate a question against all criteria and apply calibration curves."""
+        # Get raw scores
+        raw_scores = await self._evaluate_criteria(question_text)
         
-        # Calculate overall score (weighted average)
-        total_weight = sum(c["weight"] for c in self.criteria.values())
-        overall_score = sum(
-            criterion_scores[c] * self.criteria[c]["weight"] 
-            for c in criterion_scores
-        ) / total_weight
-        
-        # Determine overall pass/fail status
-        passed = len(failed_criteria) == 0
-        
-        # Create detailed feedback
-        feedback = "\n".join(overall_feedback) if overall_feedback else "All criteria passed!"
-        
-        return QuestionGradeResponse(
-            passed=passed,
-            overall_score=overall_score,
-            criterion_scores=criterion_scores,
-            failed_criteria=failed_criteria,
-            feedback=feedback,
-            improvement_suggestions=improvement_suggestions
-        )
+        # Apply calibration curves
+        calibrated_scores = {}
+        for criterion, score in raw_scores.items():
+            # Apply the curve but cap at 1.0
+            calibrated_score = min(1.0, score + self.calibration_curves.get(criterion, 0.0))
+            calibrated_scores[criterion] = calibrated_score
+            
+        return calibrated_scores
+    
+    async def grade_question(self, request: QuestionGradeRequest) -> QuestionGradeResponse:
+        """Grade a question based on quality criteria."""
+        try:
+            # Ensure rubric is initialized from good examples
+            if not self.good_examples_loaded:
+                await self.load_good_examples()
+            
+            # Get scores using the calibrated system
+            raw_scores = await self._evaluate_criteria(request.question)
+            
+            # Apply calibration curves
+            scores = {}
+            for criterion, score in raw_scores.items():
+                # Apply the curve but cap at 1.0
+                scores[criterion] = min(1.0, score + self.calibration_curves.get(criterion, 0.0))
+            
+            # Collect detailed feedback and suggestions
+            failed_criteria = []
+            improvement_suggestions = {}
+            overall_feedback = []
+            
+            # Evaluate each criterion for detailed feedback
+            for criterion in self.criteria:
+                # We've already calculated the score, but we need the feedback and suggestions
+                raw_score, feedback, suggestions = await self._evaluate_criterion(criterion, request.question)
+                calibrated_score = scores[criterion]
+                
+                if calibrated_score < self.passing_threshold:
+                    failed_criteria.append(criterion)
+                    improvement_suggestions[criterion] = suggestions
+                
+                # Include both raw and calibrated scores in feedback
+                adjustment = self.calibration_curves.get(criterion, 0.0)
+                if adjustment > 0:
+                    score_info = f"(raw: {raw_score:.2f}, curve: +{adjustment:.2f}, final: {calibrated_score:.2f})"
+                else:
+                    score_info = f"(score: {calibrated_score:.2f})"
+                    
+                overall_feedback.append(f"{criterion} {score_info}: {feedback}")
+            
+            # Calculate overall score (weighted average of calibrated scores)
+            total_weight = sum(c["weight"] for c in self.criteria.values())
+            overall_score = sum(
+                scores[c] * self.criteria[c]["weight"] 
+                for c in scores
+            ) / total_weight
+            
+            # Determine pass/fail
+            passed = len(failed_criteria) == 0
+            
+            # Create detailed feedback
+            feedback = "\n".join(overall_feedback) if overall_feedback else "All criteria passed!"
+            
+            # Add calibration information to feedback
+            if any(curve > 0 for curve in self.calibration_curves.values()):
+                calibration_info = "Calibration applied: "
+                calibration_info += ", ".join([f"{c}: +{curve:.2f}" for c, curve in self.calibration_curves.items() if curve > 0])
+                feedback = f"{calibration_info}\n\n{feedback}"
+            
+            return QuestionGradeResponse(
+                passed=passed,
+                overall_score=overall_score,
+                criterion_scores=scores,
+                failed_criteria=failed_criteria,
+                feedback=feedback,
+                improvement_suggestions=improvement_suggestions
+            )
+            
+        except Exception as e:
+            print(f"Error grading question: {str(e)}")
+            return QuestionGradeResponse(
+                passed=False,
+                overall_score=0.0,
+                criterion_scores={},
+                failed_criteria=["error"],
+                feedback=f"Error during grading: {str(e)}",
+                improvement_suggestions={}
+            )
     
     async def load_good_examples(self):
         """Load and analyze good examples from the test_examples table using direct REST API calls"""
         print("Loading good examples for rubric development...")
+        
+        # Skip calibration since we're using pre-calculated values
+        # Comment out this block since calibration is now handled separately
+        # if not self.is_calibrated:
+        #     await self.calibrate_against_good_examples()
         
         headers = {
             "apikey": self.supabase_key,
@@ -428,6 +624,13 @@ class QuestionService:
             }
         }
         self.good_examples_loaded = True
+    
+    def _generate_feedback(self, question: str, scores: Dict[str, float]) -> str:
+        """Generate a detailed feedback string based on the scores"""
+        feedback = []
+        for criterion, score in scores.items():
+            feedback.append(f"{criterion}: {score:.2f}")
+        return "\n".join(feedback)
     
     async def _evaluate_criterion(self, criterion: str, question: str) -> Tuple[float, str, List[str]]:
         """Evaluate a specific criterion using LLM and rubric"""

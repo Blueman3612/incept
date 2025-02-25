@@ -9,6 +9,8 @@ from app.models.test_harness import (
     DifficultyLevel,
     QualityCheckResult
 )
+from app.services.question_service import QuestionService
+from app.schemas.question import QuestionGradeRequest
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -17,6 +19,7 @@ import time
 from datetime import datetime
 import random
 import re
+import asyncio
 
 def create_session():
     """Create a requests session with retry logic and timeouts"""
@@ -215,8 +218,9 @@ def get_historical_feedback(session, supabase_url: str, headers: dict, lesson: s
                     successful_sentences.extend(simple_sentences[:3])  # Take a few examples
                 
                 # Extract specific before/after examples from language feedback
-                if "language_quality" in metadata.get("feedback", {}):
-                    feedback = metadata["feedback"]["language_quality"]
+                feedback_data = metadata.get("feedback", {})
+                if isinstance(feedback_data, dict) and "language_quality" in feedback_data:
+                    feedback = feedback_data["language_quality"]
                     
                     # If the score is exactly 0.95, capture what issues led to that score
                     if scores.get("language_quality") == 0.95:
@@ -406,56 +410,29 @@ def apply_language_simplification(content: str, historical_data: dict) -> str:
     
     return simplified_content
 
-def generate_question(qc_service: QualityControlService, lesson: str, difficulty: str, feedback_history: list, historical_data: dict = None) -> str:
-    """Generate a new question using GPT-4 with improved language learning"""
+async def generate_question(lesson: str, difficulty: str, historical_data: dict = None, example_question: str = None) -> dict:
+    """
+    Generate a new question using the QuestionService and historical data.
+    This is the core function that can be used by both scripts and API endpoints.
     
-    # Extract language patterns and rules from history
-    language_rules = historical_data.get("language_rules", []) if historical_data else []
-    successful_sentences = historical_data.get("successful_sentences", []) if historical_data else []
-    common_issues = historical_data.get("common_issues", {}) if historical_data else {}
+    Args:
+        lesson: Lesson topic
+        difficulty: Difficulty level (easy, medium, hard)
+        historical_data: Historical feedback data from previous examples
+        example_question: Optional example question to generate a variation from
+        
+    Returns:
+        dict: Result containing generated content and quality assessment
+    """
     
-    # Build specific language guidance based on historical feedback
-    language_guidance = "Language Requirements:\n"
+    # Initialize question service for grading
+    question_service = QuestionService()
+    await question_service.load_good_examples()  # Ensure grading criteria are loaded
     
-    if language_rules:
-        language_guidance += "Based on previous feedback, FOLLOW THESE SPECIFIC RULES:\n"
-        for i, rule in enumerate(language_rules[:5], 1):
-            language_guidance += f"{i}. {rule.capitalize()}\n"
+    # For API use, create a fallback QC service if needed
+    qc_service = QualityControlService() 
     
-    # Add examples of good sentence structures if available
-    if successful_sentences:
-        language_guidance += "\nEXAMPLES OF GOOD SENTENCES FOR GRADE 4:\n"
-        for i, sentence in enumerate(successful_sentences[:3], 1):
-            language_guidance += f"Example {i}: \"{sentence.strip()}\"\n"
-    
-    # Add specific guidance based on common issues
-    if common_issues:
-        most_common = sorted(common_issues.items(), key=lambda x: x[1], reverse=True)[:3]
-        language_guidance += "\nSPECIAL FOCUS AREAS (based on previous mistakes):\n"
-        for issue, _ in most_common:
-            if "vocabulary" in issue:
-                language_guidance += "- Use simple, grade 4 vocabulary. Avoid technical terms without explanation.\n"
-            if "sentence" in issue:
-                language_guidance += "- Use short, direct sentences. Break up complex sentences into multiple simple ones.\n"
-            if "ambiguous" in issue:
-                language_guidance += "- Ensure explanations are specific and clear. Avoid vague descriptions.\n"
-    else:
-        # Default language guidance if no history exists
-        language_guidance += """
-SPECIAL FOCUS AREAS:
-- Use simple, grade 4 vocabulary. Avoid technical terms without explanation.
-- Use short, direct sentences. Break up complex sentences into multiple simple ones.
-- Ensure explanations are specific and clear. Avoid vague descriptions.
-- Keep all explanations concrete and directly related to the passage.
-"""
-
-    # Add specific transformations learned from feedback
-    if historical_data and "transformation_pairs" in historical_data and historical_data["transformation_pairs"]:
-        language_guidance += "\nSPECIFIC LANGUAGE TRANSFORMATIONS TO FOLLOW:\n"
-        for i, (before, after) in enumerate(historical_data["transformation_pairs"][:5], 1):
-            language_guidance += f"{i}. Use \"{after}\" instead of \"{before}\"\n"
-    
-    # Select a context not recently used
+    # Set up context options for variety
     contexts = [
         "a student's experience at school",
         "an interesting animal fact",
@@ -482,6 +459,7 @@ SPECIAL FOCUS AREAS:
         available_contexts = contexts
     selected_context = random.choice(available_contexts)
     
+    # Question structure options
     structures = [
         "What is the main idea of this passage?",
         "Which detail best supports the main idea?",
@@ -490,7 +468,74 @@ SPECIAL FOCUS AREAS:
         "Which sentence best summarizes the passage?"
     ]
     
-    prompt = f"""Generate a Grade 4 Language Arts question for the lesson on "{lesson}" at {difficulty} difficulty level.
+    # Extract language guidance from historical data
+    language_guidance = ""
+    if historical_data:
+        language_rules = historical_data.get("language_rules", [])
+        successful_sentences = historical_data.get("successful_sentences", [])
+        common_issues = historical_data.get("common_issues", {})
+        
+        language_guidance = "Language Requirements:\n"
+        
+        if language_rules:
+            language_guidance += "Based on previous feedback, FOLLOW THESE SPECIFIC RULES:\n"
+            for i, rule in enumerate(language_rules[:5], 1):
+                language_guidance += f"{i}. {rule.capitalize()}\n"
+        
+        # Add examples of good sentence structures if available
+        if successful_sentences:
+            language_guidance += "\nEXAMPLES OF GOOD SENTENCES FOR GRADE 4:\n"
+            for i, sentence in enumerate(successful_sentences[:3], 1):
+                language_guidance += f"Example {i}: \"{sentence.strip()}\"\n"
+        
+        # Add specific guidance based on common issues
+        if common_issues:
+            most_common = sorted(common_issues.items(), key=lambda x: x[1], reverse=True)[:3]
+            language_guidance += "\nSPECIAL FOCUS AREAS (based on previous mistakes):\n"
+            for issue, _ in most_common:
+                if "vocabulary" in issue:
+                    language_guidance += "- Use simple, grade 4 vocabulary. Avoid technical terms without explanation.\n"
+                if "sentence" in issue:
+                    language_guidance += "- Use short, direct sentences. Break up complex sentences into multiple simple ones.\n"
+                if "ambiguous" in issue:
+                    language_guidance += "- Ensure explanations are specific and clear. Avoid vague descriptions.\n"
+        
+        # Add specific transformations learned from feedback
+        if "transformation_pairs" in historical_data and historical_data["transformation_pairs"]:
+            language_guidance += "\nSPECIFIC LANGUAGE TRANSFORMATIONS TO FOLLOW:\n"
+            for i, (before, after) in enumerate(historical_data["transformation_pairs"][:5], 1):
+                language_guidance += f"{i}. Use \"{after}\" instead of \"{before}\"\n"
+    else:
+        # Default language guidance if no history exists
+        language_guidance = """Language Requirements:
+SPECIAL FOCUS AREAS:
+- Use simple, grade 4 vocabulary. Avoid technical terms without explanation.
+- Use short, direct sentences. Break up complex sentences into multiple simple ones.
+- Ensure explanations are specific and clear. Avoid vague descriptions.
+- Keep all explanations concrete and directly related to the passage.
+"""
+    
+    # Handle variation generation if example_question is provided
+    if example_question:
+        prompt = f"""Generate a Grade 4 Language Arts question variation for the lesson on "{lesson}" at {difficulty} difficulty level.
+This is based on the following example question:
+
+{example_question}
+
+{language_guidance}
+
+IMPORTANT:
+1. Keep the same general structure and question type
+2. Create a DIFFERENT passage with similar complexity
+3. Maintain the same difficulty level
+4. Use the same number of options
+5. Keep all the required parts: passage, question, options, explanations, and solution
+
+FORMAT THE QUESTION EXACTLY LIKE THE EXAMPLE ABOVE but with new content.
+"""
+    else:
+        # Create a new question from scratch
+        prompt = f"""Generate a Grade 4 Language Arts question for the lesson on "{lesson}" at {difficulty} difficulty level.
 
 {language_guidance}
 
@@ -534,17 +579,36 @@ Solution:
 3. [Simple step]
 4. [Optional simple step]"""
 
+    # Generate content using OpenAI
     content = qc_service._generate_with_gpt(prompt)
     
-    # Apply gentler simplification based on learned patterns before returning
-    return apply_language_simplification(content, historical_data)
+    # Apply language simplifications based on historical data
+    content = apply_language_simplification(content, historical_data)
+    
+    # Grade the generated question using our QuestionService
+    # Create a proper QuestionGradeRequest object instead of using a dict
+    request = QuestionGradeRequest(question=content)
+    result = await question_service.grade_question(request)
+    
+    # Convert pydantic model to dict for easier handling
+    result_dict = {
+        "passed": result.passed,
+        "overall_score": result.overall_score,
+        "criterion_scores": result.criterion_scores,
+        "failed_criteria": result.failed_criteria,
+        "feedback": result.feedback,
+        "improvement_suggestions": result.improvement_suggestions,
+        "content": content
+    }
+    
+    return result_dict
 
-def extract_feedback(result: QualityCheckResult) -> list:
+def extract_feedback(result: dict) -> list:
     """Extract actionable feedback from quality check results"""
     feedback = []
     
     # Extract passage topic for variety tracking
-    content = result.content if hasattr(result, 'content') else ""
+    content = result.get('content', "")
     if content:
         passage_match = re.search(r'Read the following passage.*?\n\n(.*?)\n\n', content, re.DOTALL)
         if passage_match:
@@ -552,9 +616,9 @@ def extract_feedback(result: QualityCheckResult) -> list:
             feedback.append(f"Previous passage about: {passage[:50]}...")
     
     # Extract specific feedback by criterion
-    for criterion, score in result.criterion_scores.items():
+    for criterion, score in result.get('criterion_scores', {}).items():
         if score < 0.99:
-            criterion_feedback = result.feedback.split(f"{criterion}:", 1)
+            criterion_feedback = result.get('feedback', '').split(f"{criterion}:", 1)
             if len(criterion_feedback) > 1:
                 # For language feedback, extract specific issues
                 if criterion == "language_quality":
@@ -567,7 +631,88 @@ def extract_feedback(result: QualityCheckResult) -> list:
     
     return feedback
 
-def main():
+async def generate_question_for_api(lesson: str, difficulty: str, example_question: str = None, max_attempts: int = 3) -> dict:
+    """
+    API-ready function to generate a question with automatic retries for quality.
+    This function can be called directly from an API endpoint.
+    
+    Args:
+        lesson: The lesson to generate a question for
+        difficulty: The difficulty level (easy, medium, hard)
+        example_question: Optional example to create a variation from
+        max_attempts: Maximum number of generation attempts
+    
+    Returns:
+        dict: Contains the generated question and its quality assessment
+    """
+    
+    # First, get historical feedback for this lesson/difficulty combo
+    load_dotenv()
+    supabase_url = os.getenv("SUPABASE_URL")
+    supabase_key = os.getenv("SUPABASE_KEY")
+    
+    if not supabase_url or not supabase_key:
+        # Fallback to generation without historical data
+        historical_data = None
+    else:
+        # Get historical data
+        headers = {
+            "apikey": supabase_key,
+            "Authorization": f"Bearer {supabase_key}",
+            "Content-Type": "application/json"
+        }
+        session = create_session()
+        historical_data = get_historical_feedback(session, supabase_url, headers, lesson, difficulty)
+    
+    attempts = 0
+    best_result = None
+    highest_score = 0
+    
+    # Try to generate a high-quality question with retries
+    while attempts < max_attempts:
+        attempts += 1
+        result = await generate_question(lesson, difficulty, historical_data, example_question)
+        
+        # If we got a passing result, return it immediately
+        if result["passed"]:
+            return {
+                "content": result["content"],
+                "quality": {
+                    "passed": True,
+                    "scores": result["criterion_scores"],
+                    "overall_score": result["overall_score"]
+                },
+                "metadata": {
+                    "lesson": lesson,
+                    "difficulty": difficulty,
+                    "attempts": attempts
+                }
+            }
+        
+        # Otherwise, keep track of the best result so far
+        if result["overall_score"] > highest_score:
+            highest_score = result["overall_score"]
+            best_result = result
+    
+    # If we couldn't generate a passing question after max attempts,
+    # return the best one we found with appropriate feedback
+    return {
+        "content": best_result["content"],
+        "quality": {
+            "passed": False,
+            "scores": best_result["criterion_scores"],
+            "overall_score": best_result["overall_score"],
+            "failed_criteria": best_result["failed_criteria"],
+            "feedback": best_result["feedback"]
+        },
+        "metadata": {
+            "lesson": lesson,
+            "difficulty": difficulty,
+            "attempts": attempts
+        }
+    }
+
+async def main():
     """Generate and test questions with improved output"""
     load_dotenv()
     
@@ -586,7 +731,6 @@ def main():
     }
     
     session = create_session()
-    qc_service = QualityControlService()
     
     # Setup Supabase
     setup_supabase(session, supabase_url, headers)
@@ -621,13 +765,11 @@ def main():
                     print(f"\n[{attempts}/{max_attempts}] 🔄 Generating question... ({good_examples}/{target_per_combination} ✓)")
                     
                     try:
-                        content = generate_question(qc_service, lesson, difficulty, feedback_history, historical_data)
-                        
-                        # Check quality
-                        result = qc_service.check_quality(content)
-                        scores = result.criterion_scores
+                        # Use the new generation function
+                        result = await generate_question(lesson, difficulty, historical_data)
                         
                         # Very compact score display
+                        scores = result["criterion_scores"]
                         score_display = " ".join([
                             f"{'✓' if scores.get('completeness', 0) >= 0.99 else '✗'}{scores.get('completeness', 0):.2f}",
                             f"{'✓' if scores.get('answer_quality', 0) >= 0.99 else '✗'}{scores.get('answer_quality', 0):.2f}",
@@ -635,16 +777,16 @@ def main():
                             f"{'✓' if scores.get('language_quality', 0) >= 0.99 else '✗'}{scores.get('language_quality', 0):.2f}"
                         ])
                         
-                        if result.passed:
+                        if result["passed"]:
                             print(f"✅ PASSED! Scores: {score_display}")
                         else:
                             print(f"❌ FAILED: {score_display}")
-                            print(f"   Issues: {', '.join(result.failed_criteria)}")
+                            print(f"   Issues: {', '.join(result['failed_criteria'])}")
                             
                             # Extract specific transformation pairs from language quality feedback
-                            if "language_quality" in result.failed_criteria and hasattr(result, 'feedback'):
+                            if "language_quality" in result["failed_criteria"] and result["feedback"]:
                                 language_feedback = ""
-                                for line in result.feedback.split("\n"):
+                                for line in result["feedback"].split("\n"):
                                     if "language_quality:" in line.lower():
                                         language_feedback = line
                                         break
@@ -663,31 +805,29 @@ def main():
                         
                         # Save example
                         example = {
-                            "content": content,
-                            "quality_status": "good" if result.passed else "bad",
+                            "content": result["content"],
+                            "quality_status": "good" if result["passed"] else "bad",
                             "quality_criterion": "completeness",
                             "mutation_type": "original",
                             "lesson": lesson,
                             "difficulty_level": difficulty,
                             "metadata": {
                                 "scores": {k: round(v, 2) for k, v in scores.items()},
-                                "failed_criteria": result.failed_criteria,
-                                "feedback": {
-                                    criterion: feedback.strip()
-                                    for criterion, feedback in [f.split(':', 1) for f in result.feedback.split('\n') if ':' in f]
-                                } if result.feedback else {}
+                                "failed_criteria": result["failed_criteria"],
+                                "feedback": result["feedback"]
                             }
                         }
                         
                         # Save to database
                         saved_example = save_example(session, supabase_url, headers, example)
                         
-                        if result.passed:
+                        if result["passed"]:
                             good_examples += 1
                             total_passed += 1
                             
                             # Generate mutations with simplified output
                             print("🧬 Generating mutations...")
+                            qc_service = QualityControlService()
                             mutations = qc_service.generate_mutations(TestExample(**example))
                             mutation_count = len(mutations)
                             
@@ -720,4 +860,4 @@ def main():
         raise
 
 if __name__ == "__main__":
-    main() 
+    asyncio.run(main()) 

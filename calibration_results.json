@@ -1,0 +1,16 @@
+{
+  "curves": {
+    "completeness": 0.39,
+    "answer_quality": 0.09,
+    "explanation_quality": 0.16,
+    "language_quality": 0.04
+  },
+  "average_scores": {
+    "completeness": 0.6,
+    "answer_quality": 0.9,
+    "explanation_quality": 0.8300000000000001,
+    "language_quality": 0.95
+  },
+  "sample_size": 5,
+  "total_examples": 367
+}

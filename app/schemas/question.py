@@ -68,15 +68,21 @@ class QuestionTagResponse(BaseModel):
 class QuestionGenerateRequest(BaseModel):
     """Model for question generation request."""
     lesson: str = Field(..., description="Lesson to generate a question for")
-    standard: Optional[str] = Field(None, description="Educational standard")
-    difficulty: QuestionDifficulty = Field(..., description="Difficulty level")
-    question_type: QuestionType = Field(default=QuestionType.MCQ, description="Type of question")
+    difficulty: str = Field(..., description="Difficulty level (easy, medium, hard)")
     example_question: Optional[str] = Field(None, description="Example question to base the new one on")
-    additional_instructions: Optional[str] = Field(None, description="Additional instructions for generation")
+
+
+class QualityInfo(BaseModel):
+    """Quality assessment information for a generated question"""
+    passed: bool = Field(..., description="Whether the question passes all quality criteria")
+    scores: Dict[str, float] = Field(..., description="Scores for each quality criterion")
+    overall_score: float = Field(..., ge=0, le=1, description="Overall quality score")
+    failed_criteria: Optional[List[str]] = Field(None, description="List of failed criteria if any")
+    feedback: Optional[str] = Field(None, description="Detailed feedback if the question failed")
 
 
 class QuestionGenerateResponse(BaseModel):
     """Model for question generation response."""
-    question: str = Field(..., description="The generated question")
-    tags: Dict = Field(..., description="Tags for the generated question")
-    quality_score: float = Field(..., ge=0, le=1, description="Quality score of the generated question") 
+    content: str = Field(..., description="The generated question content")
+    quality: QualityInfo = Field(..., description="Quality assessment information")
+    metadata: Dict = Field(..., description="Metadata about the generation process") 
