@@ -1,0 +1,251 @@
+{
+  "standard_counts": {
+    "L.4.1": 2,
+    "L.4.2": 2,
+    "L.4.3": 2,
+    "L.4.4": 2,
+    "L.4.5": 2,
+    "L.4.6": 2,
+    "RL.4.1": 2,
+    "RL.4.2": 1,
+    "RL.4.3": 2,
+    "RI.4.2": 2,
+    "RI.4.8": 2
+  },
+  "question_types": {
+    "other": 13,
+    "superlative": 4,
+    "negative_question": 3,
+    "main_idea": 1
+  },
+  "difficulty_distribution": {
+    "1": 20,
+    "2": 1
+  },
+  "avg_length_by_difficulty": {
+    "1": 37.6,
+    "2": 12.0
+  },
+  "patterns_by_standard": {
+    "L.4.1": {
+      "1": [
+        "Which of the following sentences is written correctly?",
+        "<table align=\"center\" cellspacing=\"0\" bordercolor=\"#000000\" border=\"1\" cellpadding=\"10\"><tbody><tr><td><font face=\"Arial\">All of the players"
+      ]
+    },
+    "L.4.2": {
+      "1": [
+        "If you do not say anything out loud, then your",
+        "<table align=\"center\" border=\"1\" cellspacing=\"0\" cellpadding=\"10\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Willem should use a"
+      ]
+    },
+    "L.4.3": {
+      "1": [
+        "Which choice would best fit in the blank?",
+        "<div align=\"center\"><img src=\"https://app.studyisland.com/pics/manandboot.jpg\"></div><br><table align=\"center\" cellspacing=\"0\" bordercolor=\"#000000\" border=\"1\" cellpadding=\"10\"><tbody><tr><td><font face=\"Arial\">A man"
+      ]
+    },
+    "L.4.4": {
+      "1": [
+        "<table align=\"center\" cellpadding=\"15\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td>Many people put <b>antifreeze</b> in",
+        "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin had been sick for days. He looked worn"
+      ]
+    },
+    "L.4.5": {
+      "1": [
+        "<font face=\"arial\">Molly's class got to vote on their field trip.",
+        "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">The <b>ruler</b> of a"
+      ]
+    },
+    "L.4.6": {
+      "1": [
+        "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Belle tried to hide",
+        "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Murray has great hope"
+      ]
+    },
+    "RL.4.1": {
+      "1": [
+        "<!--replaces Q4--> What may be one effect of the new",
+        "<!--replaces q19-->What is one effect of the weather turning very"
+      ]
+    },
+    "RL.4.2": {
+      "2": [
+        "Why does Anya sob at the end of \"Anya and"
+      ]
+    },
+    "RL.4.3": {
+      "1": [
+        "<div align=\"center\"><font face=\"arial\" size=\"+1\"><b>Timothy's Quest</b></font><br><font face=\"arial\">by Tirzah Tyler</font></div><br><font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;One day,",
+        "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jenna closed the door to her apartment and walked"
+      ]
+    },
+    "RI.4.2": {
+      "1": [
+        "<div align=\"center\"><img src=\"https://app.studyisland.com/pics/swimpic.jpg\"></div><br><font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You can be safe around water if",
+        "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Golf clubs consist of woods (some are made of"
+      ]
+    },
+    "RI.4.8": {
+      "1": [
+        "Why did the team train for months so they could",
+        "<!--replaces q26-->Why is Venus so hot on the surface?"
+      ]
+    }
+  },
+  "vocab_complexity": {
+    "1": [
+      "following",
+      "sentences",
+      "correctly?",
+      "align=\"center\"",
+      "cellspacing=\"0\"",
+      "bordercolor=\"#000000\"",
+      "border=\"1\"",
+      "cellpadding=\"10\"><tbody><tr><td><font",
+      "face=\"Arial\">All",
+      "game.</font></td></tr></tbody></table><br>Which",
+      "preposition",
+      "<b>best</b>",
+      "completes",
+      "sentence?",
+      "anything",
+      "thoughts",
+      "align=\"center\"",
+      "border=\"1\"",
+      "cellspacing=\"0\"",
+      "cellpadding=\"10\"",
+      "bordercolor=\"#000000\"><tbody><tr><td><font",
+      "face=\"arial\">Willem",
+      "dictionary",
+      "not&nbsp;_______&nbsp;words",
+      "</font></td></tr></tbody></table>",
+      "following",
+      "<b>best</b>",
+      "completes",
+      "sentence?",
+      "align=\"center\"><img",
+      "src=\"https://app.studyisland.com/pics/manandboot.jpg\"></div><br><table",
+      "align=\"center\"",
+      "cellspacing=\"0\"",
+      "bordercolor=\"#000000\"",
+      "border=\"1\"",
+      "cellpadding=\"10\"><tbody><tr><td><font",
+      "face=\"Arial\">A",
+      "glasses.</font></td></tr></tbody></table><br>Quinn",
+      "sentence",
+      "describe",
+      "picture.",
+      "<b>best</b>",
+      "sentence?",
+      "align=\"center\"",
+      "cellpadding=\"15\"",
+      "cellspacing=\"0\"",
+      "border=\"1\"",
+      "bordercolor=\"#000000\"><tbody><tr><td>Many",
+      "<b>antifreeze</b>",
+      "protects",
+      "freezing.</td></tr></tbody></table><br>The",
+      "<i>anti-</i>",
+      "face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin",
+      "olive-colored",
+      "<u>pasty</u>.</font><br><br>What",
+      "<u>pasty</u>?",
+      "face=\"arial\">Molly's",
+      "<strong>agreement</strong>",
+      "</font><br><br>",
+      "<strong>agreement</strong>",
+      "align=\"center\"",
+      "cellpadding=\"10\"",
+      "cellspacing=\"0\"",
+      "border=\"1\"",
+      "bordercolor=\"#000000\"><tbody><tr><td><font",
+      "face=\"arial\">The",
+      "<b>ruler</b>",
+      "laws.</font></td></tr></tbody></table><br>Which",
+      "sentences",
+      "<b>ruler</b>",
+      "sentence",
+      "align=\"center\"",
+      "cellpadding=\"10\"",
+      "cellspacing=\"0\"",
+      "border=\"1\"",
+      "bordercolor=\"#000000\"><tbody><tr><td><font",
+      "face=\"arial\">Belle",
+      "<b>disappointment</b>.",
+      "forgotten",
+      "</font></td></tr></tbody></table><br>What",
+      "<b>bolded</b>",
+      "align=\"center\"",
+      "cellpadding=\"10\"",
+      "cellspacing=\"0\"",
+      "border=\"1\"",
+      "bordercolor=\"#000000\"><tbody><tr><td><font",
+      "face=\"arial\">Murray",
+      "test.</font></td></tr></tbody></table><br>A",
+      "<!--replaces",
+      "fishermen",
+      "<!--replaces",
+      "q19-->What",
+      "align=\"center\"><font",
+      "face=\"arial\"",
+      "size=\"+1\"><b>Timothy's",
+      "Quest</b></font><br><font",
+      "face=\"arial\">by",
+      "Tyler</font></div><br><font",
+      "face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;One",
+      "Timothy's",
+      "Alexander",
+      "listened",
+      "closely.",
+      "library.",
+      "lesson.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The",
+      "Timothy's",
+      "Washington.",
+      "interested",
+      "remembered",
+      "Washington.",
+      "yes.</font><br><br>What",
+      "Timothy?",
+      "face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jenna",
+      "apartment",
+      "concrete",
+      "sidewalk.",
+      "taxicabs",
+      "streets.",
+      "passengers",
+      "benches.",
+      "distance.",
+      "buildings",
+      "surrounded",
+      "traffic.",
+      "continued",
+      "different",
+      "building",
+      "</font><br><br>What",
+      "passage?",
+      "align=\"center\"><img",
+      "src=\"https://app.studyisland.com/pics/swimpic.jpg\"></div><br><font",
+      "face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You",
+      "lifeguards.",
+      "Lifeguards",
+      "lifeguard",
+      "help.</font><br><br>This",
+      "paragraph",
+      "face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Golf",
+      "different",
+      "combinations",
+      "according",
+      "putter.</font><br><br>What",
+      "idea</b>",
+      "paragraph",
+      "mountain?",
+      "<!--replaces",
+      "q26-->Why",
+      "surface?"
+    ],
+    "2": [
+      "Elders\"?"
+    ]
+  }
+}

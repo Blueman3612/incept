@@ -1,0 +1,93 @@
+{
+  "complexity_by_standard": {
+    "L_4_1": {
+      "standard_code": "L.4.1",
+      "question_count": 198,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "L_4_2": {
+      "standard_code": "L.4.2",
+      "question_count": 2,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "L_4_3": {
+      "standard_code": "L.4.3",
+      "question_count": 3,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "L_4_4": {
+      "standard_code": "L.4.4",
+      "question_count": 72,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "L_4_5": {
+      "standard_code": "L.4.5",
+      "question_count": 31,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "L_4_6": {
+      "standard_code": "L.4.6",
+      "question_count": 3,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "RL_4_1": {
+      "standard_code": "RL.4.1",
+      "question_count": 8,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "RL_4_2": {
+      "standard_code": "RL.4.2",
+      "question_count": 1,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "RL_4_3": {
+      "standard_code": "RL.4.3",
+      "question_count": 7,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "RI_4_2": {
+      "standard_code": "RI.4.2",
+      "question_count": 21,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    },
+    "RI_4_8": {
+      "standard_code": "RI.4.8",
+      "question_count": 6,
+      "avg_question_length": 0,
+      "avg_choices_count": 0
+    }
+  },
+  "vocabulary_analysis": {
+    "total_unique_words": 0,
+    "grade_appropriate_words": [],
+    "complex_words": [],
+    "word_frequency": []
+  },
+  "question_structures": {
+    "question_types": {},
+    "common_patterns": {}
+  },
+  "distractor_patterns": {
+    "distractor_types": {}
+  },
+  "explanation_patterns": {
+    "explanation_patterns": {}
+  },
+  "summary": {
+    "total_questions": 352,
+    "standards_count": 11,
+    "avg_question_length": 0.0,
+    "top_question_types": [],
+    "top_explanation_patterns": []
+  }
+}

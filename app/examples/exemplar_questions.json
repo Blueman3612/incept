@@ -1,0 +1,887 @@
+{
+  "L_4_1": {
+    "standard_code": "L.4.1",
+    "standard_statement": "Demonstrate command of the conventions of standard English grammar and usage when writing or speaking.",
+    "exemplars": [
+      {
+        "id": 47462,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:24:01.351Z",
+        "updated_at": "2025-02-18T19:24:01.351Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b94ef03-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 18614,
+          "contentEntryId": 47462,
+          "question": "Which of the following sentences is written correctly?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "I sat on the same bench why I had left my books.",
+              "isCorrect": false
+            },
+            {
+              "label": "Yesterday, he played golf why is his favorite sport.",
+              "isCorrect": false
+            },
+            {
+              "label": "Tony likes to go to the park why he plays football with his friends.",
+              "isCorrect": false
+            },
+            {
+              "label": "I asked the conductor the reason why the train never jumps the tracks.",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T19:24:01.351Z",
+          "updated_at": "2025-02-18T19:24:01.351Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 47900,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:29:17.105Z",
+        "updated_at": "2025-02-18T19:29:17.105Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b998be9-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 19052,
+          "contentEntryId": 47900,
+          "question": "<table align=\"center\" cellspacing=\"0\" bordercolor=\"#000000\" border=\"1\" cellpadding=\"10\"><tbody><tr><td><font face=\"Arial\">All of the players are going to eat pizza _______ their game.</font></td></tr></tbody></table><br>Which preposition <b>best</b> completes the sentence?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "below",
+              "isCorrect": false
+            },
+            {
+              "label": "after",
+              "isCorrect": true
+            },
+            {
+              "label": "since",
+              "isCorrect": false
+            },
+            {
+              "label": "past",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:29:17.105Z",
+          "updated_at": "2025-02-18T19:29:17.105Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "L_4_2": {
+    "standard_code": "L.4.2",
+    "standard_statement": "Demonstrate command of the conventions of standard English capitalization, punctuation, and spelling when writing.",
+    "exemplars": [
+      {
+        "id": 51562,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:03:43.844Z",
+        "updated_at": "2025-02-18T20:03:43.844Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b97184e-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22714,
+          "contentEntryId": 51562,
+          "question": "If you do not say anything out loud, then your thoughts are",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "soft spoken.",
+              "isCorrect": false
+            },
+            {
+              "label": "spoken less.",
+              "isCorrect": false
+            },
+            {
+              "label": "bespoken.",
+              "isCorrect": false
+            },
+            {
+              "label": "unspoken.",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T20:03:43.844Z",
+          "updated_at": "2025-02-18T20:03:43.844Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 51899,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:07:31.786Z",
+        "updated_at": "2025-02-18T20:07:31.786Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b98ea22-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 23051,
+          "contentEntryId": 51899,
+          "question": "<table align=\"center\" border=\"1\" cellspacing=\"0\" cellpadding=\"10\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Willem should use a dictionary so that he does not&nbsp;_______&nbsp;words in the stories he writes. </font></td></tr></tbody></table> <br>   Which of the following words <b>best</b> completes the sentence?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "overspell",
+              "isCorrect": false
+            },
+            {
+              "label": "respell",
+              "isCorrect": false
+            },
+            {
+              "label": "exspell",
+              "isCorrect": false
+            },
+            {
+              "label": "misspell",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T20:07:31.786Z",
+          "updated_at": "2025-02-18T20:07:31.786Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "L_4_3": {
+    "standard_code": "L.4.3",
+    "standard_statement": "Use knowledge of language and its conventions when writing, speaking, reading, or listening.",
+    "exemplars": [
+      {
+        "id": 51081,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:59:14.116Z",
+        "updated_at": "2025-02-18T19:59:14.116Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b94fd42-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22233,
+          "contentEntryId": 51081,
+          "question": "Which choice would best fit in the blank?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "reflex action",
+              "isCorrect": false
+            },
+            {
+              "label": "life span",
+              "isCorrect": true
+            },
+            {
+              "label": "growth rate",
+              "isCorrect": false
+            },
+            {
+              "label": "oxygen cycle",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:59:14.116Z",
+          "updated_at": "2025-02-18T19:59:14.116Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 47911,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:29:25.169Z",
+        "updated_at": "2025-02-18T19:29:25.169Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b94fd42-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 19063,
+          "contentEntryId": 47911,
+          "question": "<div align=\"center\"><img src=\"https://app.studyisland.com/pics/manandboot.jpg\"></div><br><table align=\"center\" cellspacing=\"0\" bordercolor=\"#000000\" border=\"1\" cellpadding=\"10\"><tbody><tr><td><font face=\"Arial\">A man is behind a boot with glasses.</font></td></tr></tbody></table><br>Quinn wrote the sentence above to describe the picture. What is the <b>best</b> way to write the sentence?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "A man is into a boot with glasses.",
+              "isCorrect": false
+            },
+            {
+              "label": "A man with glasses is inside a boot.",
+              "isCorrect": true
+            },
+            {
+              "label": "A man with glasses is beneath a boot.",
+              "isCorrect": false
+            },
+            {
+              "label": "A man is like a boot with glasses.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:29:25.169Z",
+          "updated_at": "2025-02-18T19:29:25.169Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "L_4_4": {
+    "standard_code": "L.4.4",
+    "standard_statement": "Determine or clarify the meaning of unknown and multiple-meaning words and phrases based on grade 4 reading and content, choosing flexibly from a range of strategies.",
+    "exemplars": [
+      {
+        "id": 51743,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:05:33.420Z",
+        "updated_at": "2025-02-18T20:05:33.420Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b971c9d-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22895,
+          "contentEntryId": 51743,
+          "question": "<table align=\"center\" cellpadding=\"15\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td>Many people put  <b>antifreeze</b> in their cars in the winter.  This protects the car from freezing.</td></tr></tbody></table><br>The prefix <i>anti-</i> means",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "more.",
+              "isCorrect": false
+            },
+            {
+              "label": "before.",
+              "isCorrect": false
+            },
+            {
+              "label": "against.",
+              "isCorrect": true
+            },
+            {
+              "label": "after.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:05:33.420Z",
+          "updated_at": "2025-02-18T20:05:33.420Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 51475,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:02:55.245Z",
+        "updated_at": "2025-02-18T20:02:55.245Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b950446-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22627,
+          "contentEntryId": 51475,
+          "question": "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Kevin had been sick for days. He looked worn out. His mom said that he was \"white as a sheet\" because his usually bright, olive-colored skin was dull and <u>pasty</u>.</font><br><br>What is the meaning of the word <u>pasty</u>?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "shining",
+              "isCorrect": false
+            },
+            {
+              "label": "healthy",
+              "isCorrect": false
+            },
+            {
+              "label": "clear",
+              "isCorrect": false
+            },
+            {
+              "label": "pale",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T20:02:55.245Z",
+          "updated_at": "2025-02-18T20:02:55.245Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "L_4_5": {
+    "standard_code": "L.4.5",
+    "standard_statement": "Demonstrate understanding of figurative language, word relationships, and nuances in word meanings.",
+    "exemplars": [
+      {
+        "id": 51614,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:04:25.062Z",
+        "updated_at": "2025-02-18T20:04:25.062Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b98158c-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22766,
+          "contentEntryId": 51614,
+          "question": "<font face=\"arial\">Molly's class got to vote on their field trip.  They got to choose between a museum and a park.  Molly wanted to go to the museum.  She raised her hand in <strong>agreement</strong> with going to a museum. </font><br><br> What does the word <strong>agreement</strong> mean?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "to not agree",
+              "isCorrect": false
+            },
+            {
+              "label": "someone who agrees",
+              "isCorrect": false
+            },
+            {
+              "label": "state of disagreeing",
+              "isCorrect": false
+            },
+            {
+              "label": "state of agreeing",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T20:04:25.062Z",
+          "updated_at": "2025-02-18T20:04:25.062Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 50943,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:57:50.501Z",
+        "updated_at": "2025-02-18T19:57:50.501Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b98158c-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22095,
+          "contentEntryId": 50943,
+          "question": "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">The <b>ruler</b> of a country gets to make the laws.</font></td></tr></tbody></table><br>Which of these sentences uses the word <b>ruler</b> in the same way as the sentence above?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "Use a ruler to make sure you draw a straight line.",
+              "isCorrect": false
+            },
+            {
+              "label": "Without my ruler, I can't tell how long the box is.",
+              "isCorrect": false
+            },
+            {
+              "label": "An average ruler will be twelve inches in length.",
+              "isCorrect": false
+            },
+            {
+              "label": "The cruel ruler made people pay many high taxes.",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T19:57:50.501Z",
+          "updated_at": "2025-02-18T19:57:50.501Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "L_4_6": {
+    "standard_code": "L.4.6",
+    "standard_statement": "Acquire and use accurately grade-appropriate general academic and domain-specific words and phrases, including those that signal precise actions, emotions, or states of being (e.g., quizzed, whined, stammered) and that are basic to a particular topic (e.g., wildlife, conservation, and endangered when discussing animal preservation).",
+    "exemplars": [
+      {
+        "id": 51517,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:03:20.378Z",
+        "updated_at": "2025-02-18T20:03:20.378Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b385869-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22669,
+          "contentEntryId": 51517,
+          "question": "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Belle tried to hide her <b>disappointment</b>. Her best friend had forgotten to invite Belle to her party. </font></td></tr></tbody></table><br>What is the meaning of the <b>bolded</b> word?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "able to be disappointed",
+              "isCorrect": false
+            },
+            {
+              "label": "state of being disappointed",
+              "isCorrect": true
+            },
+            {
+              "label": "being disappointed again",
+              "isCorrect": false
+            },
+            {
+              "label": "never being disappointed",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:03:20.378Z",
+          "updated_at": "2025-02-18T20:03:20.378Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 51549,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:03:35.739Z",
+        "updated_at": "2025-02-18T20:03:35.739Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b385869-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 22701,
+          "contentEntryId": 51549,
+          "question": "<table align=\"center\" cellpadding=\"10\" cellspacing=\"0\" border=\"1\" bordercolor=\"#000000\"><tbody><tr><td><font face=\"arial\">Murray has great hope that he will pass his test.</font></td></tr></tbody></table><br>A person who has a lot of hope is called",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "hopeful.",
+              "isCorrect": true
+            },
+            {
+              "label": "hopefulness.",
+              "isCorrect": false
+            },
+            {
+              "label": "hopeless.",
+              "isCorrect": false
+            },
+            {
+              "label": "hoping.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:03:35.739Z",
+          "updated_at": "2025-02-18T20:03:35.739Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "RL_4_1": {
+    "standard_code": "RL.4.1",
+    "standard_statement": "Refer to details and examples in a text when explaining what the text says explicitly and when drawing inferences from the text.",
+    "exemplars": [
+      {
+        "id": 52231,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:11:12.756Z",
+        "updated_at": "2025-02-18T20:11:12.756Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b340798-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 23383,
+          "contentEntryId": 52231,
+          "question": "<!--replaces Q4-->\nWhat may be one effect of the new nets the fishermen are using?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "Dolphins will learn to stop swimming with tuna.",
+              "isCorrect": false
+            },
+            {
+              "label": "More dolphins may be around in the future.",
+              "isCorrect": true
+            },
+            {
+              "label": "Fewer tuna will be caught in the future.",
+              "isCorrect": false
+            },
+            {
+              "label": "Dolphins will learn to breathe water.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:11:12.756Z",
+          "updated_at": "2025-02-18T20:11:12.756Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 52254,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:11:22.381Z",
+        "updated_at": "2025-02-18T20:11:22.381Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b340798-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 23406,
+          "contentEntryId": 52254,
+          "question": "<!--replaces q19-->What is one effect of the weather turning very cold where the pandas live?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "They must grow thicker fur.",
+              "isCorrect": false
+            },
+            {
+              "label": "They must grow thinner fur.",
+              "isCorrect": false
+            },
+            {
+              "label": "They must move to lower ground.",
+              "isCorrect": true
+            },
+            {
+              "label": "They must move to higher ground.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:11:22.381Z",
+          "updated_at": "2025-02-18T20:11:22.381Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "RL_4_2": {
+    "standard_code": "RL.4.2",
+    "standard_statement": "Determine a theme of a story, drama, or poem from details in the text; summarize the text.",
+    "exemplars": [
+      {
+        "id": 50715,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:55:18.657Z",
+        "updated_at": "2025-02-18T19:55:18.657Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b370403-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 21867,
+          "contentEntryId": 50715,
+          "question": "Why does Anya sob at the end of \"Anya and the Elders\"?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "She has to leave her home and live with Widow Wyler to learn weaving.",
+              "isCorrect": true
+            },
+            {
+              "label": "Her mother does not allow her to become a surgeon.",
+              "isCorrect": false
+            },
+            {
+              "label": "Her mother is happy that she will be leaving the home in two days.",
+              "isCorrect": false
+            },
+            {
+              "label": "She has not done well on the test given by the Elders.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:55:18.657Z",
+          "updated_at": "2025-02-18T19:55:18.657Z",
+          "difficulty": 2
+        }
+      }
+    ]
+  },
+  "RL_4_3": {
+    "standard_code": "RL.4.3",
+    "standard_statement": "Describe in depth a character, setting, or event in a story or drama, drawing on specific details in the text (e.g., a character's thoughts, words, or actions).",
+    "exemplars": [
+      {
+        "id": 50765,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:55:44.437Z",
+        "updated_at": "2025-02-18T19:55:44.437Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b38c03c-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 21917,
+          "contentEntryId": 50765,
+          "question": "<div align=\"center\"><font face=\"arial\" size=\"+1\"><b>Timothy's Quest</b></font><br><font face=\"arial\">by Tirzah Tyler</font></div><br><font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;One day, Timothy's teacher taught the class about Alexander the Great. Timothy listened closely. He liked hearing about people who lived long ago. That night, he asked his dad to take him to the library. Timothy wanted to find out more about that day's lesson.<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;The next day, Timothy's teacher taught about George Washington. Timothy was very interested in the lesson. He remembered that his dad owned a book about George Washington. He wanted to ask his dad if he could borrow that book. He hoped his dad would say yes.</font><br><br>What does the reader learn about Timothy?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "He really enjoys learning.",
+              "isCorrect": true
+            },
+            {
+              "label": "He never sees his dad.",
+              "isCorrect": false
+            },
+            {
+              "label": "He tries to avoid libraries.",
+              "isCorrect": false
+            },
+            {
+              "label": "He helps his teacher.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:55:44.437Z",
+          "updated_at": "2025-02-18T19:55:44.437Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 50397,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:52:10.797Z",
+        "updated_at": "2025-02-18T19:52:10.797Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b38c03c-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 21549,
+          "contentEntryId": 50397,
+          "question": "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Jenna closed the door to her apartment and walked down the concrete stairs. She stepped out onto the busy sidewalk. Yellow taxicabs sped down the crowded streets. City buses stopped to pick up passengers waiting in benches. While she waited at the corner for the traffic light to turn green, Jenna heard sirens wailing in the distance. She made her way through the crowd of people walking to work. Tall buildings surrounded her. Cars honked in the heavy traffic. Posters were taped on store windows and bright signs hung over her head. Jenna continued moving down the street, past dirty alleys and different kinds of stores. She finally reached her small office building and walked inside. </font><br><br>What can the reader tell about Jenna from reading the passage?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "She likes to ride the bus to work.",
+              "isCorrect": false
+            },
+            {
+              "label": "She works in a crowded building.",
+              "isCorrect": false
+            },
+            {
+              "label": "She lives and works in a big city.",
+              "isCorrect": true
+            },
+            {
+              "label": "She likes walking with a city crowd.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:52:10.797Z",
+          "updated_at": "2025-02-18T19:52:10.797Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "RI_4_2": {
+    "standard_code": "RI.4.2",
+    "standard_statement": "Determine the main idea of a text and explain how it is supported by key details; summarize the text.",
+    "exemplars": [
+      {
+        "id": 48243,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:32:50.881Z",
+        "updated_at": "2025-02-18T19:32:50.881Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b36c281-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 19395,
+          "contentEntryId": 48243,
+          "question": "<div align=\"center\"><img src=\"https://app.studyisland.com/pics/swimpic.jpg\"></div><br><font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;You can be safe around water if you follow a few simple rules. Learn to swim, and always swim with a friend. It's more fun, and having a friend with you is just plain smart! Make sure to obey the rules and lifeguards. Rules for the pool are there to protect you. Lifeguards make sure you follow the rules to help you stay safe, not to ruin your fun. Make sure a lifeguard or an adult can see you at all times, just in case you need help.</font><br><br>This paragraph is mostly about",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "running around the pool.",
+              "isCorrect": false
+            },
+            {
+              "label": "swimming with friends.",
+              "isCorrect": false
+            },
+            {
+              "label": "being safe at the pool.",
+              "isCorrect": true
+            },
+            {
+              "label": "becoming a lifeguard.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:32:50.881Z",
+          "updated_at": "2025-02-18T19:32:50.881Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 48234,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:32:45.237Z",
+        "updated_at": "2025-02-18T19:32:45.237Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b36c281-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 19386,
+          "contentEntryId": 48234,
+          "question": "<font face=\"arial\">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Golf clubs consist of woods (some are made of metal), irons, and a putter. Golfers have different combinations of these clubs according to their own needs. The woods are used off the tee and for long shots. As golfers get closer to the green, they use irons. On the green, golfers use a putter.</font><br><br>What is the <b>main idea</b> of the paragraph above?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "the rules of the game of golf",
+              "isCorrect": false
+            },
+            {
+              "label": "the top ten golfers",
+              "isCorrect": false
+            },
+            {
+              "label": "how to swing a golf club",
+              "isCorrect": false
+            },
+            {
+              "label": "clubs used to play golf",
+              "isCorrect": true
+            }
+          ],
+          "created_at": "2025-02-18T19:32:45.237Z",
+          "updated_at": "2025-02-18T19:32:45.237Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  },
+  "RI_4_8": {
+    "standard_code": "RI.4.8",
+    "standard_statement": "Explain how an author uses reasons and evidence to support particular points in a text.",
+    "exemplars": [
+      {
+        "id": 50805,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T19:56:07.544Z",
+        "updated_at": "2025-02-18T19:56:07.544Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b36c6d2-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 21957,
+          "contentEntryId": 50805,
+          "question": "Why did the team train for months so they could climb the mountain?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "The first team chosen did not reach the peak of the mountain.",
+              "isCorrect": false
+            },
+            {
+              "label": "The rough conditions required climbers to prepare well for the journey.",
+              "isCorrect": true
+            },
+            {
+              "label": "The weather caused climbers to put off their journey for a later date.",
+              "isCorrect": false
+            },
+            {
+              "label": "The oxygen tanks had problems and needed to be repaired.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T19:56:07.544Z",
+          "updated_at": "2025-02-18T19:56:07.544Z",
+          "difficulty": 1
+        }
+      },
+      {
+        "id": 52221,
+        "type": "Question",
+        "sourceId": 230,
+        "created_at": "2025-02-18T20:11:07.642Z",
+        "updated_at": "2025-02-18T20:11:07.642Z",
+        "name": null,
+        "ordinal": null,
+        "metadata": null,
+        "CFItemId": "6b36c6d2-d7cc-11e8-824f-0242ac160002",
+        "CFDocumentId": null,
+        "content": {
+          "id": 23373,
+          "contentEntryId": 52221,
+          "question": "<!--replaces q26-->Why is Venus so hot on the surface?",
+          "referenceText": null,
+          "answers": [
+            {
+              "label": "The thick air holds in the Sun's heat.",
+              "isCorrect": true
+            },
+            {
+              "label": "There is carbon dioxide on the surface.",
+              "isCorrect": false
+            },
+            {
+              "label": "Lead melts on the surface.",
+              "isCorrect": false
+            },
+            {
+              "label": "There are no cool breezes to cool it off.",
+              "isCorrect": false
+            }
+          ],
+          "created_at": "2025-02-18T20:11:07.642Z",
+          "updated_at": "2025-02-18T20:11:07.642Z",
+          "difficulty": 1
+        }
+      }
+    ]
+  }
+}
