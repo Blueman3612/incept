@@ -105,11 +105,11 @@ class QualityGrader:
         
         self.model = os.getenv("GPT_MODEL", "gpt-4")
         
-        # Stricter thresholds for quality assurance
-        self.passing_threshold = 0.85  # Increased from 0.7 to ensure higher quality
-        self.minimum_criterion_threshold = 0.75  # Any criterion below this fails automatically
-        self.critical_criteria = ["answer_quality", "completeness"]  # These are considered dealbreakers
-        self.critical_threshold = 0.85  # Higher threshold for critical criteria
+        # Even stricter thresholds for quality assurance
+        self.passing_threshold = 0.85
+        self.minimum_criterion_threshold = 0.75
+        self.critical_criteria = ["answer_quality", "completeness", "educational_value"]  # Added educational_value
+        self.critical_threshold = 0.85
         
         # Define the scoring rubric for each quality criterion
         self.rubric = {
@@ -127,7 +127,8 @@ class QualityGrader:
                     "Missing answer options for MCQ",
                     "No clear correct answer",
                     "Missing explanations for wrong answers",
-                    "No solution provided"
+                    "No solution provided",
+                    "Components present but severely underdeveloped"  # New critical issue
                 ]
             },
             "answer_quality": {
@@ -143,7 +144,9 @@ class QualityGrader:
                     "Multiple potentially correct answers",
                     "Implausible distractors that don't test understanding",
                     "Distractors that are obviously wrong",
-                    "Correct answer is identifiable by format or pattern"
+                    "Correct answer is identifiable by format or pattern",
+                    "Distractors don't test meaningful misconceptions",  # New critical issue
+                    "Answer options too similar or too different"  # New critical issue
                 ]
             },
             "explanation_quality": {
@@ -159,7 +162,9 @@ class QualityGrader:
                     "Incorrect explanation",
                     "Confusing or misleading explanations",
                     "Explanations that don't address misconceptions",
-                    "Overly complex explanations for grade level"
+                    "Overly complex explanations for grade level",
+                    "Superficial explanations that just restate the answer",  # New critical issue
+                    "Generic explanations that don't tie to specific content"  # New critical issue
                 ]
             },
             "language_quality": {
@@ -175,7 +180,26 @@ class QualityGrader:
                     "Vocabulary significantly above/below grade level",
                     "Ambiguous or confusing wording",
                     "Severe grammar or punctuation errors",
-                    "Inconsistent terminology that affects understanding"
+                    "Inconsistent terminology that affects understanding",
+                    "Wordiness that obscures meaning",  # New critical issue
+                    "Overly complex sentence structures for grade level"  # New critical issue
+                ]
+            },
+            "educational_value": {  # New criterion
+                "description": "Content has clear educational value and supports learning objectives.",
+                "components": [
+                    "Tests important grade-level knowledge",
+                    "Focuses on meaningful concepts",
+                    "Promotes critical thinking",
+                    "Relates to real-world application when appropriate",
+                    "Aligned with educational standards"
+                ],
+                "critical_issues": [
+                    "Trivial or non-educational content",
+                    "Tests rote memorization only",
+                    "Lacks connection to important concepts",
+                    "Content inappropriate for grade level",
+                    "Could be answered without understanding the concept"
                 ]
             }
         }
@@ -203,14 +227,16 @@ class QualityGrader:
                     "completeness": 0.0,
                     "answer_quality": 0.0,
                     "explanation_quality": 0.0,
-                    "language_quality": 0.0
+                    "language_quality": 0.0,
+                    "educational_value": 0.0  # Added new criterion
                 },
                 "critical_issues": ["No content provided"],
                 "feedback": {
                     "completeness": "No content provided.",
                     "answer_quality": "No content provided.",
                     "explanation_quality": "No content provided.",
-                    "language_quality": "No content provided."
+                    "language_quality": "No content provided.",
+                    "educational_value": "No content provided."  # Added new criterion
                 }
             }
         
@@ -238,18 +264,36 @@ class QualityGrader:
             if not passes:
                 failing_criteria.append(criterion)
         
-        # Overall pass requires all criteria to pass and no critical issues
-        overall_pass = len(failing_criteria) == 0 and len(critical_issues) == 0 and confidence >= 0.85
+        # Overall pass requires all criteria to pass, no critical issues, and high confidence
+        overall_pass = (
+            len(failing_criteria) == 0 and 
+            len(critical_issues) == 0 and 
+            confidence >= 0.90 and  # Increased from 0.85
+            all(scores.get(key, 0) >= self.critical_threshold for key in self.critical_criteria)
+        )
         
-        # Determine failure reason
+        # Additional check: verify adequate spread between scores
+        # If all scores are exactly the same, it's suspicious
+        score_values = list(scores.values())
+        if len(set(score_values)) <= 1 and score_values[0] > 0.8:
+            critical_issues.append("Suspicious uniform scoring pattern")
+            overall_pass = False
+            
+        # Determine failure reason with more detail
         failure_reason = None
         if not overall_pass:
-            if confidence < 0.85:
-                failure_reason = "Low evaluation confidence"
+            if confidence < 0.90:
+                failure_reason = f"Low evaluation confidence: {confidence:.2f}"
             elif len(critical_issues) > 0:
                 failure_reason = f"Critical issues identified: {', '.join(critical_issues[:3])}"
             elif len(failing_criteria) > 0:
-                failure_reason = f"Failed criteria: {', '.join(failing_criteria)}"
+                failure_detail = []
+                for criterion in failing_criteria:
+                    failure_detail.append(f"{criterion} ({scores.get(criterion, 0):.2f})")
+                failure_reason = f"Failed criteria: {', '.join(failure_detail)}"
+            else:
+                # Catch-all for any other failures
+                failure_reason = "Failed to meet overall quality standard"
         
         # Prepare the detailed response
         result = {
@@ -268,8 +312,8 @@ class QualityGrader:
         # Log the reason for failure if applicable
         if not overall_pass:
             details = []
-            if confidence < 0.85:
-                details.append(f"Confidence score ({confidence:.2f}) is below threshold (0.85)")
+            if confidence < 0.90:  # Updated threshold
+                details.append(f"Confidence score ({confidence:.2f}) is below threshold (0.90)")
             if critical_issues:
                 details.append(f"Critical issues detected: {', '.join(critical_issues)}")
             for criterion, passes in criteria_results.items():
@@ -305,7 +349,7 @@ class QualityGrader:
             payload = {
                 "model": self.model,
                 "messages": [
-                    {"role": "system", "content": "You are an expert educational content evaluator with expertise in K-8 education standards and content quality assessment. You are extremely critical and hold content to the highest standards."},
+                    {"role": "system", "content": "You are an expert educational content evaluator with expertise in K-8 education standards and content quality assessment. You are extremely critical and hold content to the highest standards. You never give high scores unless content is truly exceptional."},
                     {"role": "user", "content": prompt}
                 ],
                 "temperature": 0.1,  # Lower temperature for more consistent evaluations
@@ -343,13 +387,14 @@ class QualityGrader:
         Returns:
             String prompt for the LLM
         """
-        # Construct a detailed prompt that covers all four quality criteria
+        # Construct a detailed prompt that covers all five quality criteria (including the new educational_value)
         prompt = f"""
 You are an expert reviewer of educational content for Grade {grade_level} with extremely high standards.
-You'll evaluate a piece of educational content against four specific quality criteria, providing a score and detailed feedback.
+You'll evaluate a piece of educational content against five specific quality criteria, providing a score and detailed feedback.
 
-Important: Educational content MUST be of the highest quality. Be extremely strict and critical in your evaluation.
+Important: Educational content MUST be of the highest quality. Be EXTREMELY strict and critical in your evaluation.
 Err on the side of failing content when in doubt. It's far better to reject good content than to allow bad content through.
+Do not give high scores (0.9+) unless the content is truly excellent in that dimension.
 
 CONTENT TO EVALUATE:
 ```
@@ -371,6 +416,7 @@ EVALUATION CRITERIA:
    - {self.rubric['completeness']['critical_issues'][1]}
    - {self.rubric['completeness']['critical_issues'][2]}
    - {self.rubric['completeness']['critical_issues'][3]}
+   - {self.rubric['completeness']['critical_issues'][5]}
 
 2. ANSWER QUALITY (Score 0.0-1.0)
    Definition: {self.rubric['answer_quality']['description']}
@@ -385,6 +431,8 @@ EVALUATION CRITERIA:
    - {self.rubric['answer_quality']['critical_issues'][1]}
    - {self.rubric['answer_quality']['critical_issues'][2]}
    - {self.rubric['answer_quality']['critical_issues'][3]}
+   - {self.rubric['answer_quality']['critical_issues'][4]}
+   - {self.rubric['answer_quality']['critical_issues'][5]}
 
 3. EXPLANATION QUALITY (Score 0.0-1.0)
    Definition: {self.rubric['explanation_quality']['description']}
@@ -399,6 +447,8 @@ EVALUATION CRITERIA:
    - {self.rubric['explanation_quality']['critical_issues'][1]}
    - {self.rubric['explanation_quality']['critical_issues'][2]}
    - {self.rubric['explanation_quality']['critical_issues'][3]}
+   - {self.rubric['explanation_quality']['critical_issues'][4]}
+   - {self.rubric['explanation_quality']['critical_issues'][5]}
 
 4. LANGUAGE QUALITY (Score 0.0-1.0)
    Definition: {self.rubric['language_quality']['description']}
@@ -413,18 +463,40 @@ EVALUATION CRITERIA:
    - {self.rubric['language_quality']['critical_issues'][1]}
    - {self.rubric['language_quality']['critical_issues'][2]}
    - {self.rubric['language_quality']['critical_issues'][3]}
+   - {self.rubric['language_quality']['critical_issues'][4]}
+   - {self.rubric['language_quality']['critical_issues'][5]}
+
+5. EDUCATIONAL VALUE (Score 0.0-1.0)
+   Definition: {self.rubric['educational_value']['description']}
+   Components to look for:
+   - {self.rubric['educational_value']['components'][0]}
+   - {self.rubric['educational_value']['components'][1]}
+   - {self.rubric['educational_value']['components'][2]}
+   - {self.rubric['educational_value']['components'][3]}
+   - {self.rubric['educational_value']['components'][4]}
+   Critical issues to check for:
+   - {self.rubric['educational_value']['critical_issues'][0]}
+   - {self.rubric['educational_value']['critical_issues'][1]}
+   - {self.rubric['educational_value']['critical_issues'][2]}
+   - {self.rubric['educational_value']['critical_issues'][3]}
+   - {self.rubric['educational_value']['critical_issues'][4]}
 
 SCORING GUIDELINES:
 Use a fine-grained scale from 0.0 to 1.0 with increments of 0.05 to allow for nuanced evaluation:
 - 0.00-0.40: Severely deficient, unacceptable
 - 0.45-0.60: Significant issues present
 - 0.65-0.75: Some issues, needs improvement
-- 0.80-0.90: Minor issues, generally acceptable
-- 0.95-1.00: Excellent, meets all requirements
+- 0.80-0.85: Minor issues, generally acceptable
+- 0.90-0.95: Very good, meets requirements well
+- 1.00: Exceptional, perfect (extremely rare)
+
+IMPORTANT: Be very stingy with high scores. Reserve scores of 0.9+ only for truly exceptional content.
+Most content, even good content, should score between 0.75-0.85 in each category.
+Be especially critical with educational value - does this content truly teach something meaningful?
 
 For each criterion, provide:
 1. A score between 0.0 and 1.0 using the increments described above
-2. Detailed feedback explaining the score
+2. Detailed feedback explaining the score, including specific examples from the content
 3. List of any critical issues identified (issues that would automatically cause a fail)
 
 Also provide a confidence score (0.0-1.0) indicating how confident you are in your evaluation.
@@ -436,13 +508,15 @@ FORMAT YOUR RESPONSE EXACTLY AS FOLLOWS:
     "completeness": [SCORE],
     "answer_quality": [SCORE],
     "explanation_quality": [SCORE],
-    "language_quality": [SCORE]
+    "language_quality": [SCORE],
+    "educational_value": [SCORE]
   }},
   "feedback": {{
     "completeness": "[DETAILED FEEDBACK]",
     "answer_quality": "[DETAILED FEEDBACK]",
     "explanation_quality": "[DETAILED FEEDBACK]",
-    "language_quality": "[DETAILED FEEDBACK]"
+    "language_quality": "[DETAILED FEEDBACK]",
+    "educational_value": "[DETAILED FEEDBACK]"
   }},
   "critical_issues": [
     "[CRITICAL ISSUE 1]",
@@ -486,7 +560,7 @@ Again, it is better to fail good content than to pass bad content.
                     critical_issues = [critical_issues]
                 
                 # Ensure all required keys are present
-                for key in ["completeness", "answer_quality", "explanation_quality", "language_quality"]:
+                for key in ["completeness", "answer_quality", "explanation_quality", "language_quality", "educational_value"]:
                     if key not in scores:
                         scores[key] = 0.0
                     if key not in feedback:
@@ -515,14 +589,16 @@ Again, it is better to fail good content than to pass bad content.
             "completeness": 0.0,
             "answer_quality": 0.0,
             "explanation_quality": 0.0,
-            "language_quality": 0.0
+            "language_quality": 0.0,
+            "educational_value": 0.0  # Added new criterion
         }
         
         default_feedback = {
             "completeness": "Error evaluating content completeness.",
             "answer_quality": "Error evaluating answer quality.",
             "explanation_quality": "Error evaluating explanation quality.",
-            "language_quality": "Error evaluating language quality."
+            "language_quality": "Error evaluating language quality.",
+            "educational_value": "Error evaluating educational value."  # Added new criterion
         }
         
         default_critical_issues = ["Evaluation system error"]
