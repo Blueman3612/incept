@@ -42,7 +42,46 @@ def preprocess_question_content(content: str) -> str:
     # Replace with just the second instruction
     cleaned_content = re.sub(pattern, "Read the question carefully and select the best answer.", content)
     
-    # Remove any HTML tags if present (another reported critical issue)
+    # Handle case where "Read the following passage and answer the question." is followed by a passage
+    # that might be duplicated later in HTML format
+    passage_intro_pattern = r"Read the following passage and answer the question\.\s*\n\s*(.+?)(?=\n\s*<|\n\s*What|\n\s*[A-Z]\))"
+    
+    # Look for matches of the passage introduction pattern
+    match = re.search(passage_intro_pattern, cleaned_content, re.DOTALL)
+    
+    if match:
+        # Get the plain text passage
+        passage_text = match.group(1).strip()
+        
+        # Only proceed if we have a substantial passage (not just a single short line)
+        if passage_text and len(passage_text) > 15:
+            # Create simplified versions for comparison (removing formatting, case, punctuation)
+            simplified_passage = re.sub(r'[^\w\s]', '', passage_text).lower().strip()
+            simplified_content = re.sub(r'[^\w\s]', '', cleaned_content).lower()
+            
+            # Check for a second occurrence of this passage
+            start_pos = simplified_content.find(simplified_passage)
+            if start_pos >= 0:
+                second_pos = simplified_content.find(simplified_passage, start_pos + len(simplified_passage))
+                if second_pos >= 0:
+                    # Found a duplicate! Remove the first occurrence and the intro
+                    cleaned_content = cleaned_content[:match.start()] + cleaned_content[match.end():]
+                    logger.info(f"Removed duplicated passage: {passage_text[:50]}...")
+    
+    # Also look for any HTML tables containing the passage
+    html_table_pattern = r"<table[^>]*>.*?</table>\s*<br>"
+    match = re.search(html_table_pattern, cleaned_content, re.DOTALL)
+    if match:
+        # Extract text from the table
+        table_html = match.group(0)
+        # Create a version without the table but with the text content preserved
+        text_only_version = re.sub(r'<[^>]*>', ' ', table_html).strip()
+        # Replace the HTML table with just the text
+        if text_only_version:
+            cleaned_content = cleaned_content.replace(table_html, text_only_version + "\n\n")
+            logger.info("Converted HTML table to plain text")
+    
+    # Finally, remove any remaining HTML tags
     cleaned_content = re.sub(r"<[^>]*>", "", cleaned_content)
     
     # If content was modified, log that preprocessing was applied

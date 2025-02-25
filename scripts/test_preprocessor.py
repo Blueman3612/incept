@@ -65,11 +65,36 @@ Read the question carefully and select the best answer.</div>
 <p>D. 8</p>
 
 <p>The correct answer is A.</p>"""
+    
+    # Example 4: Question with duplicated passage
+    example4 = """Read the following passage and answer the question.
+
+The baker often misused his baking tools. He smashed nuts with his measuring spoons.
+
+<table align="center" cellpadding="10" cellspacing="0" border="1" bordercolor="#000000"><tbody><tr><td><font face="arial">The baker often <b>misused</b> his baking tools. He smashed nuts with his measuring spoons.</font></td></tr></tbody></table><br>What is the meaning of the <b>bolded</b> word?
+
+A) used before
+B) not used correctly
+C) used over again
+D) able to be used
+
+Correct Answer: B
+
+Explanation for wrong answers:
+A) This answer is incorrect. The correct answer is 'not used correctly', while this option states 'used before', which is not supported by the text.
+C) This answer is incorrect. The correct answer is 'not used correctly', while this option states 'used over again', which is not supported by the text.
+D) This answer is incorrect. The correct answer is 'not used correctly', while this option states 'able to be used', which is not supported by the text.
+
+Solution:
+1. Read the passage carefully, focusing on key information.
+2. Identify that 'not used correctly' is supported by details in the text.
+3. Select the answer that best aligns with the information provided."""
 
     # Process each example
     processed1 = preprocess_question_content(example1)
     processed2 = preprocess_question_content(example2)
     processed3 = preprocess_question_content(example3)
+    processed4 = preprocess_question_content(example4)
     
     # Print results
     print("\n📝 Example 1 (Passage Reference):")
@@ -93,16 +118,30 @@ Read the question carefully and select the best answer.</div>
     print(f"    First 50 chars: '{processed3[:50]}...'")
     print(f"  Was modified: {processed3 != example3}")
     
+    print("\n📝 Example 4 (Duplicated Passage):")
+    print("  Before preprocessing:")
+    print(f"    First 100 chars: '{example4[:100]}...'")
+    print("  After preprocessing:")
+    print(f"    First 100 chars: '{processed4[:100]}...'")
+    print(f"  Was modified: {processed4 != example4}")
+    
     # Test with the grader
     print("\n🧠 Testing grading with preprocessor...")
     metadata = {"grade_level": 4}
     
     # Grade example with problematic text
-    result = grader.grade_content(example1, metadata)
-    print(f"\nExample 1 grading result: {result['overall_result']}")
-    print(f"Was preprocessed: {result.get('preprocessed', False)}")
-    if 'critical_issues' in result and result['critical_issues']:
-        print(f"Critical issues: {', '.join(result['critical_issues'])}")
+    result1 = grader.grade_content(example1, metadata)
+    print(f"\nExample 1 grading result: {result1['overall_result']}")
+    print(f"Was preprocessed: {result1.get('preprocessed', False)}")
+    if 'critical_issues' in result1 and result1['critical_issues']:
+        print(f"Critical issues: {', '.join(result1['critical_issues'])}")
+    
+    # Grade example with duplicated passage
+    result4 = grader.grade_content(example4, metadata)
+    print(f"\nExample 4 grading result: {result4['overall_result']}")
+    print(f"Was preprocessed: {result4.get('preprocessed', False)}")
+    if 'critical_issues' in result4 and result4['critical_issues']:
+        print(f"Critical issues: {', '.join(result4['critical_issues'])}")
     
     return 0
 
