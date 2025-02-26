@@ -14,12 +14,11 @@ from app.schemas.question import (
 import sys
 import os
 from app.services.grader_service import grade_question
+from app.services.question_generator import generate_question_with_grading
 
 # Add the scripts directory to the path so we can import from generate_questions.py
 scripts_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), "scripts")
 sys.path.append(scripts_path)
-
-from scripts.generate_questions import generate_question_for_api
 
 router = APIRouter(prefix="/questions", tags=["questions"])
 
@@ -71,31 +70,57 @@ async def grade_question_endpoint(request: GradeQuestionRequest):
         raise HTTPException(status_code=500, detail=f"Failed to grade question: {str(e)}")
 
 
-@router.post("/generate", response_model=QuestionGenerateResponse, status_code=200)
-async def generate_question(request: QuestionGenerateRequest):
+# Enhanced request model for generate endpoint
+class EnhancedGenerateRequest(BaseModel):
+    """Enhanced request model for question generation."""
+    lesson: str = Field(..., description="Lesson to generate a question for (e.g., 'main_idea', 'supporting_details')")
+    difficulty: str = Field(..., description="Difficulty level ('easy', 'medium', 'hard')")
+    example_question: Optional[str] = Field(None, description="Optional example question to base the new one on")
+    max_retries: Optional[int] = Field(1, ge=0, le=5, description="Maximum number of improvement attempts (0-5)")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata for the grader")
+
+# Simple string response model for question content
+class QuestionContentResponse(BaseModel):
+    """Response model for just the question content."""
+    content: str = Field(..., description="The generated question content")
+
+@router.post("/generate", response_model=QuestionContentResponse, status_code=200)
+async def generate_question(request: EnhancedGenerateRequest):
     """
-    Generate a new educational question or a variation of an existing question.
+    Generate a high-quality educational question that passes our strict quality checks.
     
-    This endpoint creates a high-quality grade 4 language arts question based on:
+    This endpoint creates a Grade 4 Language Arts question based on:
     - Lesson topic (e.g., "main_idea", "supporting_details", "authors_purpose")
     - Difficulty level ("easy", "medium", "hard")
     
     If generating a variation, provide an example_question to base the new question on.
-    The endpoint will attempt to generate a question that passes all quality criteria.
-    If it can't generate a perfect question after multiple attempts, it returns the
-    best result with detailed feedback.
+    The max_retries parameter controls how many attempts will be made to improve a
+    question that doesn't initially pass quality checks.
     
-    Returns the generated question content, quality assessment, and metadata.
+    The system uses our grader to evaluate quality and provide feedback for improvements.
+    Questions are evaluated on completeness, answer quality, explanation quality, and
+    language quality.
+    
+    Returns only the question content as a string.
     """
     try:
-        result = await generate_question_for_api(
+        # Set default metadata if not provided
+        if request.metadata is None:
+            metadata = {"grade_level": 4, "subject": "Language Arts"}
+        else:
+            metadata = request.metadata
+        
+        # Generate the question using our enhanced generator
+        result = generate_question_with_grading(
             lesson=request.lesson,
             difficulty=request.difficulty,
-            example_question=request.example_question
+            example_question=request.example_question,
+            max_retries=request.max_retries,
+            metadata=metadata
         )
         
-        # Validate that the result follows our schema
-        return QuestionGenerateResponse(**result)
+        # Return only the question content
+        return QuestionContentResponse(content=result["content"])
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate question: {str(e)}")
 
@@ -118,13 +143,4 @@ async def tag_question():
 #     question_service: QuestionService = Depends(get_question_service)
 # ) -> QuestionTagResponse:
 #     """Tag a question with subject, grade, standard, lesson, and difficulty."""
-#     pass
-
-
-# @router.post("/generate", response_model=QuestionGenerateResponse, status_code=201)
-# async def generate_question(
-#     request: QuestionGenerateRequest,
-#     question_service: QuestionService = Depends(get_question_service)
-# ) -> QuestionGenerateResponse:
-#     """Generate a question based on specified parameters or similar to an example."""
 #     pass 
