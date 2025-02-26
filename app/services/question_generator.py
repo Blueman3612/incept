@@ -77,6 +77,69 @@ class QuestionGenerator:
             "a fact vs. opinion question"
         ]
         
+        # Specific kid-friendly topics for greater variety in passage content
+        self.topics = [
+            # Animals
+            "pandas and their bamboo diet",
+            "how chameleons change colors",
+            "dolphins and their communication methods",
+            "the migration of monarch butterflies",
+            "how beavers build dams",
+            "pet care responsibilities",
+            "unusual ocean creatures",
+            "how birds build nests",
+            "fascinating insect behaviors",
+            "amazing animal adaptations",
+            
+            # Science & Nature
+            "how rainbows form in the sky",
+            "the water cycle",
+            "different types of clouds",
+            "how plants grow from seeds",
+            "volcanoes and how they erupt",
+            "the changing seasons",
+            "recycling and caring for the environment",
+            "the solar system planets",
+            "how weather forecasting works",
+            "dinosaur discoveries",
+            
+            # Daily Life & Social Studies
+            "planning a school garden",
+            "organizing a community cleanup",
+            "how to start a hobby collection",
+            "planning a special birthday party",
+            "making friends in a new school",
+            "learning a new skill or sport",
+            "saving money for something special",
+            "helping in your community",
+            "cultures around the world",
+            "family holiday traditions",
+            
+            # History & People
+            "the first trip to the moon",
+            "important inventions like the telephone",
+            "how transportation has changed over time",
+            "early explorers and their discoveries",
+            "how people lived long ago",
+            "the history of your favorite foods",
+            "famous artists and their work",
+            "people who made a difference in history",
+            "ancient civilizations",
+            "how schools were different in the past",
+            
+            # Stories & Adventures
+            "a camping adventure in the woods",
+            "discovering a hidden treasure map",
+            "making an unexpected friend",
+            "overcoming a fear",
+            "solving a neighborhood mystery",
+            "creating an invention",
+            "helping someone in need",
+            "participating in a competition",
+            "exploring a new place",
+            "learning something surprising"
+        ]
+        
         logger.info("QuestionGenerator initialized with model: %s", self.model)
     
     def generate_question(self, 
@@ -211,15 +274,16 @@ FORMAT THE QUESTION EXACTLY LIKE THE EXAMPLE ABOVE but with new content.
         else:
             # Create a new question from scratch
             logger.info("Generating a new question from scratch")
-            selected_context = random.choice(self.contexts)
+            #selected_context = random.choice(self.contexts)
             selected_structure = random.choice(self.structures)
+            selected_topic = random.choice(self.topics)
             
             prompt = f"""Generate a high-quality Grade 4 Language Arts question for the lesson on "{lesson}" at {difficulty} difficulty level.
 
 {language_guidance}
 
 Content Requirements:
-1. Write a passage about {selected_context}
+1. Write a passage about {selected_topic}
 2. Use {selected_structure} for your question
 3. Create 4 multiple choice options labeled A, B, C, and D
 4. Include COMPLETE explanations for each wrong answer
@@ -303,6 +367,9 @@ Solution:
         """
         logger.info("Generating improved question based on feedback")
         
+        # If the issue is with the content/topic itself, select a new topic
+        selected_topic = random.choice(self.topics)
+        
         # Create a detailed prompt for improvement
         prompt = f"""You are an expert educational content developer tasked with improving a Grade 4 Language Arts question.
 The question is for a lesson on "{lesson}" at {difficulty} difficulty level.
@@ -316,13 +383,14 @@ This question did not meet our quality standards. Please improve it based on thi
 {feedback}
 
 IMPORTANT:
-1. Keep the same general topic and question type
-2. Maintain the same difficulty level ({difficulty})
-3. Address ALL the feedback points
-4. Keep the same basic structure (passage, question, options, explanations, solution)
-5. Ensure there is ONE unambiguously correct answer
-6. Keep language appropriate for 9-10 year olds
-7. Make sure all explanations are complete and educational
+1. Keep the same general question type and structure
+2. Consider writing about a completely different topic: {selected_topic}
+3. Maintain the same difficulty level ({difficulty})
+4. Address ALL the feedback points
+5. Keep the same basic structure (passage, question, options, explanations, solution)
+6. Ensure there is ONE unambiguously correct answer
+7. Keep language appropriate for 9-10 year olds
+8. Make sure all explanations are complete and educational
 
 Return the complete improved question with all components.
 """
