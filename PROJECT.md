@@ -359,3 +359,30 @@ Deployment instructions for AWS EC2 will be added as the project progresses.
 Once the server is running, access the interactive API documentation at:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc` 
+
+## Grade 4 Language Arts Curriculum
+
+The curriculum for Grade 4 Language Arts is organized into three main categories:
+
+### Reading Fundamentals (Start here to build core skills)
+- Reading Fluency
+- Vocabulary Acquisition
+- Academic Vocabulary
+- Genre Studies
+
+### Reading Comprehension (Build on fundamentals with deeper analysis)
+- Main Idea and Supporting Details
+- Textual Details
+- Text Structure and Organization
+- Integration of Knowledge
+- Point of View
+- Character Analysis
+- Theme and Summary
+- Figurative Language
+
+### Language Conventions (Apply language skills to strengthen comprehension)
+- Grammar and Usage
+- Capitalization and Punctuation
+- Language Conventions
+
+Each lesson includes DI-style articles with worked examples and comprehensive question banks with at least 100 questions per difficulty level (easy, medium, hard). 
