@@ -42,177 +42,294 @@ def parse_question_content(raw_content: str, lesson: str, difficulty: str) -> Di
     solution = ""
     full_explanation = ""
     
+    # Print the raw content for debugging (first few lines)
+    content_preview = "\n".join(raw_content.split("\n")[:10])
+    print(f"Parsing raw content (preview):\n{content_preview}...")
+    
     # Split content into lines for processing
     lines = raw_content.strip().split('\n')
+    non_empty_lines = [line.strip() for line in lines if line.strip()]
     
-    # Track the current section being processed
-    current_section = "preamble"  # Start with preamble (can be skipped)
-    answer_section_lines = []
-    wrong_explanation_lines = []
-    solution_lines = []
+    # Try to identify standard patterns first - most questions follow a standard format
     
-    # Process each line to identify and extract components
-    for i, line in enumerate(lines):
-        stripped_line = line.strip()
+    # Pattern 1: Content starts with "Read the following passage" followed by the passage in quotation marks
+    passage_marker_indices = []
+    for i, line in enumerate(non_empty_lines):
+        if "passage" in line.lower() and "read" in line.lower():
+            passage_marker_indices.append(i)
+            
+    if passage_marker_indices:
+        # Found a passage marker, look for the passage (usually in quotes or in the next paragraph)
+        marker_idx = passage_marker_indices[0]
         
-        # Skip empty lines
-        if not stripped_line:
-            continue
-            
-        # Identify section transitions
-        if "Read the following" in stripped_line or "passage" in stripped_line and i < 3:
-            current_section = "preamble"
-            continue
-            
-        # Detect the prompt (the actual question)
-        elif any(stripped_line.endswith(c) for c in ["?", "."]) and current_section in ["preamble", "stimuli"]:
-            if current_section == "stimuli" and len(stimuli) > 0:
-                prompt = stripped_line
-                current_section = "prompt"
-            elif current_section == "preamble":
-                # If we haven't found a stimuli yet, this might be the start of it
-                stimuli = stripped_line
-                current_section = "stimuli"
-            continue
+        # Check if the passage is in quotes in the next line
+        if marker_idx + 1 < len(non_empty_lines):
+            next_line = non_empty_lines[marker_idx + 1]
+            if next_line.startswith('"') or next_line.startswith('"'):
+                # Extract the passage which might span multiple lines
+                passage_text = []
+                quote_type = '"' if next_line.startswith('"') else '"'
+                in_passage = True
                 
-        # Detect the start of answer choices
-        elif stripped_line.startswith(("A)", "A.")) and current_section in ["stimuli", "prompt"]:
-            current_section = "answers"
-            answer_section_lines.append(stripped_line)
-            continue
-            
-        # Detect the correct answer marker
-        elif "Correct Answer:" in stripped_line or "The correct answer is" in stripped_line:
-            current_section = "correct_answer"
-            # Extract the letter of the correct answer
-            if ":" in stripped_line:
-                correct_part = stripped_line.split(":", 1)[1].strip()
-                # Extract just the letter
-                for letter in ["A", "B", "C", "D"]:
-                    if letter in correct_part[:3]:  # Look in just the first few characters
-                        correct_answer = letter
-                        break
-            continue
+                for j in range(marker_idx + 1, len(non_empty_lines)):
+                    line = non_empty_lines[j]
+                    if in_passage:
+                        passage_text.append(line)
+                        if line.endswith(quote_type) or line.endswith('"'):
+                            in_passage = False
+                            # Look for the question after the passage
+                            for k in range(j + 1, len(non_empty_lines)):
+                                question_line = non_empty_lines[k]
+                                if '?' in question_line:
+                                    prompt = question_line.strip()
+                                    # Now find answer choices after the prompt
+                                    answer_start_idx = k + 1
+                                    break
                 
-        # Detect wrong answer explanations
-        elif "Explanation for wrong answers" in stripped_line or "Explanations for incorrect choices" in stripped_line:
-            current_section = "wrong_explanations"
-            continue
-            
-        # Detect the solution section
-        elif stripped_line.startswith("Solution:"):
-            current_section = "solution"
-            continue
-            
-        # Process content based on current section
-        if current_section == "stimuli":
-            stimuli += stripped_line + " "
-            
-        elif current_section == "answers":
-            answer_section_lines.append(stripped_line)
-            
-        elif current_section == "wrong_explanations":
-            wrong_explanation_lines.append(stripped_line)
-            
-        elif current_section == "solution":
-            solution_lines.append(stripped_line)
+                stimuli = ' '.join(passage_text)
+                # Clean up quotes
+                stimuli = stimuli.strip('"').strip('"').strip()
     
-    # Process collected answer choices
-    for line in answer_section_lines:
-        for letter in ["A", "B", "C", "D"]:
-            if line.startswith(f"{letter})") or line.startswith(f"{letter}."):
-                answer_text = line.split(")", 1)[1].strip() if ")" in line else line.split(".", 1)[1].strip()
-                answer_choices[letter] = answer_text
+    # If we still don't have the stimuli and prompt, try another approach
+    if not stimuli or not prompt:
+        # Look for the standard question format: stimuli followed by prompt followed by options
+        for i, line in enumerate(non_empty_lines):
+            if '?' in line and i > 0 and not prompt:
+                # This line contains a question mark - likely the prompt
+                prompt = line.strip()
+                # Everything before this line might be the stimuli
+                potential_stimuli = ' '.join(non_empty_lines[:i])
+                
+                # Don't include headers like "Read the following passage" in the stimuli
+                skip_headers = ["read the following", "passage", "answer the question"]
+                first_line = non_empty_lines[0].lower()
+                
+                if any(header in first_line for header in skip_headers) and len(non_empty_lines) > 1:
+                    potential_stimuli = ' '.join(non_empty_lines[1:i])
+                
+                stimuli = potential_stimuli.strip()
+                break
+    
+    # Find answer choices - look for A), B), C), D) pattern or A., B., C., D. pattern
+    answer_section_start = -1
+    
+    # Loop through lines to find where answer choices begin
+    for i, line in enumerate(non_empty_lines):
+        stripped_line = line.strip()
+        # Look for common answer choice patterns
+        if (stripped_line.startswith(("A)", "A.")) or 
+            stripped_line.startswith("A ") or 
+            (stripped_line == "A" and i + 1 < len(non_empty_lines) and non_empty_lines[i+1].strip().startswith(")"))):
+            answer_section_start = i
+            break
+    
+    # If we found the start of answer choices
+    if answer_section_start != -1:
+        # Process answer choices - allow different formats
+        choice_lines = []
+        
+        i = answer_section_start
+        while i < len(non_empty_lines):
+            line = non_empty_lines[i].strip()
+            
+            # Stop collecting answer choices when we hit the correct answer or explanation sections
+            if any(marker in line.lower() for marker in ["correct answer", "explanation", "solution"]):
+                break
+                
+            choice_lines.append(line)
+            i += 1
+        
+        # Process the collected answer choice lines
+        current_letter = None
+        current_text = []
+        
+        for line in choice_lines:
+            # Check for new answer choice
+            for letter in ["A", "B", "C", "D"]:
+                if (line.startswith(f"{letter})") or 
+                    line.startswith(f"{letter}.") or 
+                    line.startswith(f"{letter} ") or 
+                    line == letter):
+                    
+                    # Save the previous answer choice if there was one
+                    if current_letter and current_text:
+                        answer_choices[current_letter] = " ".join(current_text).strip()
+                        current_text = []
+                    
+                    # Start a new answer choice
+                    current_letter = letter
+                    
+                    # Extract the text after the letter/punctuation
+                    if ")" in line:
+                        text = line.split(")", 1)[1].strip()
+                    elif "." in line[:2]:  # Only check first two chars to avoid capturing sentences
+                        text = line.split(".", 1)[1].strip()
+                    elif line.startswith(f"{letter} "):
+                        text = line[2:].strip()
+                    else:
+                        text = ""  # Letter only, content is in the next line
+                        
+                    if text:
+                        current_text.append(text)
+                    break
+            else:
+                # If no letter prefix found, continue the current answer choice
+                if current_letter:
+                    current_text.append(line)
+        
+        # Add the last answer choice
+        if current_letter and current_text:
+            answer_choices[current_letter] = " ".join(current_text).strip()
+    
+    # Process the correct answer
+    for i, line in enumerate(non_empty_lines):
+        stripped_line = line.lower().strip()
+        if "correct answer" in stripped_line or "the correct answer is" in stripped_line:
+            # Extract the letter of the correct answer
+            for letter in ["A", "B", "C", "D"]:
+                if letter in line:
+                    correct_answer = letter
+                    break
+            break
+    
+    # If we have answer choices but no prompt, and the stimuli might contain the prompt
+    if answer_choices and not prompt and stimuli:
+        # Try to find the prompt at the end of the stimuli
+        lines = stimuli.split(". ")
+        if len(lines) > 1 and "?" in lines[-1]:
+            prompt = lines[-1].strip()
+            # Remove the prompt from the stimuli
+            stimuli = ". ".join(lines[:-1]) + "."
     
     # Process wrong answer explanations
-    for line in wrong_explanation_lines:
-        for letter in ["A", "B", "C", "D"]:
-            if line.startswith(f"{letter})") or line.startswith(f"{letter}."):
-                # This is a wrong answer explanation
-                explanation = line.split(")", 1)[1].strip() if ")" in line else line.split(".", 1)[1].strip()
-                wrong_answer_explanations[letter] = explanation
+    explanation_section_start = -1
+    for i, line in enumerate(non_empty_lines):
+        if "explanation for wrong" in line.lower() or "explanations for incorrect" in line.lower():
+            explanation_section_start = i
+            break
     
-    # Join solution lines
-    solution = " ".join(solution_lines).strip()
-    if solution.startswith("Solution:"):
-        solution = solution[9:].strip()  # Remove the "Solution:" prefix
-    
-    # If the wrong explanations aren't properly formatted by letter, try to structure them
-    if not wrong_answer_explanations and wrong_explanation_lines:
-        wrong_answer_text = " ".join(wrong_explanation_lines)
-        full_explanation = wrong_answer_text
+    if explanation_section_start != -1:
+        # Process wrong answer explanations
+        i = explanation_section_start + 1
+        current_letter = None
+        current_explanation = []
         
-        # For each incorrect answer, try to find its explanation
-        for letter in ["A", "B", "C", "D"]:
-            if letter != correct_answer:
-                letter_pattern = f"{letter})"
-                if letter_pattern in wrong_answer_text:
-                    try:
-                        start_idx = wrong_answer_text.index(letter_pattern)
-                        end_idx = -1
-                        # Find the end of this explanation (start of next letter or end of text)
-                        for next_letter in ["A", "B", "C", "D"]:
-                            if next_letter != letter:
-                                next_pattern = f"{next_letter})"
-                                next_idx = wrong_answer_text.find(next_pattern, start_idx + 2)
-                                if next_idx > -1 and (end_idx == -1 or next_idx < end_idx):
-                                    end_idx = next_idx
-                        
-                        if end_idx == -1:  # This is the last explanation
-                            explanation = wrong_answer_text[start_idx:].strip()
-                        else:
-                            explanation = wrong_answer_text[start_idx:end_idx].strip()
-                            
-                        wrong_answer_explanations[letter] = explanation
-                    except Exception as e:
-                        print(f"Error parsing wrong answer explanation for {letter}: {e}")
-    
-    # Combine wrong answer explanations and solution for full explanation
-    full_explanation = "Wrong answer explanations: "
-    for letter, explanation in wrong_answer_explanations.items():
-        full_explanation += f"{letter}: {explanation}. "
-    
-    full_explanation += f"\nSolution: {solution}"
-    
-    # Clean up stimuli if it's the same as the prompt
-    if stimuli and prompt and stimuli.strip() == prompt.strip():
-        stimuli = ""
-        
-    # If stimuli is empty but there should be one, try to extract it from earlier in the content
-    if not stimuli and "passage" in raw_content.lower():
-        try:
-            passage_start = raw_content.lower().find("passage")
-            if passage_start > -1:
-                # Find the next paragraph which is likely the stimuli
-                next_para_start = raw_content.find("\n\n", passage_start)
-                if next_para_start > -1:
-                    next_para_end = raw_content.find("\n\n", next_para_start + 2)
-                    if next_para_end > -1:
-                        stimuli = raw_content[next_para_start:next_para_end].strip()
-                    else:
-                        # Maybe it's the rest of the content until the prompt
-                        prompt_start = raw_content.find(prompt)
-                        if prompt_start > -1:
-                            stimuli = raw_content[next_para_start:prompt_start].strip()
-        except Exception as e:
-            print(f"Error extracting stimuli: {e}")
+        while i < len(non_empty_lines):
+            line = non_empty_lines[i].strip()
             
-    # Fall back to the original parsing for the prompt if needed
+            # Stop at solution section
+            if "solution" in line.lower() and (":" in line or i == 0 or non_empty_lines[i-1].strip() == ""):
+                break
+                
+            # Check for new explanation
+            for letter in ["A", "B", "C", "D"]:
+                if line.startswith(f"{letter})") or line.startswith(f"{letter}."):
+                    # Save the previous explanation if there was one
+                    if current_letter and current_explanation:
+                        wrong_answer_explanations[current_letter] = " ".join(current_explanation).strip()
+                        current_explanation = []
+                    
+                    # Start a new explanation
+                    current_letter = letter
+                    
+                    # Extract the text after the letter/punctuation
+                    if ")" in line:
+                        text = line.split(")", 1)[1].strip()
+                    elif "." in line[:2]:
+                        text = line.split(".", 1)[1].strip()
+                    else:
+                        text = ""
+                        
+                    if text:
+                        current_explanation.append(text)
+                    break
+            else:
+                # If no letter prefix found, continue the current explanation
+                if current_letter:
+                    current_explanation.append(line)
+            
+            i += 1
+        
+        # Add the last explanation
+        if current_letter and current_explanation:
+            wrong_answer_explanations[current_letter] = " ".join(current_explanation).strip()
+    
+    # Process solution
+    solution_section_start = -1
+    for i, line in enumerate(non_empty_lines):
+        if line.lower().startswith("solution:") or line.lower() == "solution":
+            solution_section_start = i
+            break
+    
+    if solution_section_start != -1:
+        # Gather all lines after "Solution:" until the end or next major section
+        solution_lines = []
+        i = solution_section_start
+        
+        # Skip the "Solution:" line itself
+        if ":" in non_empty_lines[i]:
+            solution_text = non_empty_lines[i].split(":", 1)[1].strip()
+            if solution_text:
+                solution_lines.append(solution_text)
+        else:
+            i += 1  # Skip the "Solution" header
+            
+        # Gather all remaining solution lines
+        while i + 1 < len(non_empty_lines):
+            i += 1
+            line = non_empty_lines[i].strip()
+            # Stop if we hit another section
+            if any(line.lower().startswith(s) for s in ["full explanation:", "notes:", "additional information:"]):
+                break
+            solution_lines.append(line)
+        
+        solution = " ".join(solution_lines).strip()
+    
+    # Clean up and validate our extracted components
+    
+    # Ensure prompt is properly identified
     if not prompt:
-        for line in lines[:15]:  # Look in first several lines
+        for line in non_empty_lines:
             if '?' in line and len(line) < 250:
                 prompt = line.strip()
                 break
     
-    # Ensure we have a reasonable prompt
+    # If we still don't have a prompt, make a reasonable guess
     if not prompt:
         prompt = f"Question about {lesson}"
-        
-    # Print extracted components for debugging
-    print(f"Extracted prompt: {prompt[:50]}...")
-    print(f"Extracted answer choices: {list(answer_choices.keys())}")
-    print(f"Extracted correct answer: {correct_answer}")
     
+    # Ensure correct_answer is properly set
+    if not correct_answer and answer_choices:
+        # If there are explanations that indicate correct answer
+        for line in non_empty_lines:
+            if "correct answer" in line.lower():
+                for letter in ["A", "B", "C", "D"]:
+                    if f"{letter}" in line:
+                        correct_answer = letter
+                        break
+    
+    # Clean up stimuli if it's actually just repeating the prompt
+    if stimuli and prompt and stimuli.strip() == prompt.strip():
+        stimuli = ""
+    
+    # Combine wrong answer explanations and solution for full explanation
+    full_explanation = ""
+    if wrong_answer_explanations:
+        full_explanation = "Wrong answer explanations: "
+        for letter, explanation in wrong_answer_explanations.items():
+            full_explanation += f"{letter}: {explanation}. "
+    
+    if solution:
+        full_explanation += f"\nSolution: {solution}"
+    
+    # Print parsing results for debugging
+    print(f"Parsing results:")
+    print(f"Stimuli: {stimuli[:50]}{'...' if len(stimuli) > 50 else ''}")
+    print(f"Prompt: {prompt}")
+    print(f"Answer choices: {list(answer_choices.keys())}")
+    print(f"Correct answer: {correct_answer}")
+    
+    # Return the structured question data
     return {
         "content": raw_content[:5000],  # Keep the full content, limited to 5000 chars
         "lesson": lesson,
