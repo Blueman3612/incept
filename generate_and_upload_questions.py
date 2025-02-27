@@ -233,16 +233,22 @@ def parse_question_content(raw_content: str, lesson: str, difficulty: str) -> Di
 
 def generate_question(lesson: str, difficulty: str, additional_instructions: Optional[str] = None) -> Dict[str, Any]:
     """
-    Generate a question using the API
+    Generate a question using the 'generate' endpoint.
     
     Args:
-        lesson: The lesson name (e.g., "Reading Fluency")
-        difficulty: Difficulty level (easy, medium, hard)
-        additional_instructions: Optional additional instructions for generation
+        lesson: The lesson name
+        difficulty: The difficulty level (easy, medium, hard)
+        additional_instructions: Any additional instructions for generation
         
     Returns:
-        The generated question data
+        Dict containing the question data
     """
+    if os.getenv("USE_SAMPLE", "False").lower() == "true":
+        print(f"Using sample question for {lesson} at {difficulty} difficulty")
+        return create_sample_question(lesson, difficulty)
+    
+    url = f"{API_BASE_URL}/api/v1/questions/generate"
+    
     payload = {
         "type": "new",
         "lesson": lesson,
@@ -252,42 +258,59 @@ def generate_question(lesson: str, difficulty: str, additional_instructions: Opt
     if additional_instructions:
         payload["additional_instructions"] = additional_instructions
     
-    print(f"Generating question for lesson: {lesson}, difficulty: {difficulty}...")
-    print(f"Sending payload: {json.dumps(payload, indent=2)}")
+    print(f"Sending payload to API: {payload}")
     
-    try:
-        response = requests.post(GENERATE_ENDPOINT, json=payload)
-        
-        # Print full response for debugging
-        print(f"Response status code: {response.status_code}")
-        
-        # Try to parse as JSON for better error reporting
+    # Set up retry parameters
+    max_retries = 5
+    retry_count = 0
+    backoff_factor = 2
+    initial_wait = 1
+    
+    while retry_count < max_retries:
         try:
-            response_data = response.json()
-            print(f"Response data keys: {list(response_data.keys())}")
-        except json.JSONDecodeError:
-            print(f"Response is not JSON: {response.text[:500]}")
-            response_data = {}
+            # Add timeout parameter to prevent hanging requests
+            response = requests.post(url, json=payload, timeout=30)
             
-        if response.status_code != 200:
-            print(f"Error generating question: {response.status_code}")
-            print(response.text)
-            raise Exception(f"Failed to generate question: {response.text[:500]}")
-        
-        # Parse the content into a structured question format
-        if "content" in response_data:
-            raw_content = response_data["content"]
-            print(f"Received raw content of length: {len(raw_content)}")
+            if response.status_code == 429:
+                # API rate limit hit - implement exponential backoff
+                wait_time = initial_wait * (backoff_factor ** retry_count)
+                print(f"Rate limit hit, waiting for {wait_time} seconds before retrying...")
+                time.sleep(wait_time)
+                retry_count += 1
+                continue
+                
+            response.raise_for_status()  # Raise exception for 4XX/5XX status codes
             
-            # Parse the raw content into a structured question
-            return parse_question_content(raw_content, lesson, difficulty)
-        else:
-            print("Warning: Unknown response format. Using default structure.")
-            return create_sample_question(lesson, difficulty)
+            # Process the successful response
+            if response.headers.get('content-type') == 'application/json':
+                data = response.json()
+                if "question" in data:
+                    return data["question"]
+                elif "content" in data:
+                    return parse_question_content(data["content"], lesson, difficulty)
+                else:
+                    print(f"Unexpected API response format: {data}")
+                    return parse_question_content(str(data), lesson, difficulty)
+            else:
+                raw_content = response.text
+                print(f"API returned raw content of length {len(raw_content)}")
+                return parse_question_content(raw_content, lesson, difficulty)
+                
+        except requests.exceptions.Timeout:
+            wait_time = initial_wait * (backoff_factor ** retry_count)
+            print(f"Request timed out, waiting for {wait_time} seconds before retrying...")
+            time.sleep(wait_time)
+            retry_count += 1
             
-    except requests.RequestException as e:
-        print(f"Request error: {str(e)}")
-        raise
+        except requests.exceptions.RequestException as e:
+            wait_time = initial_wait * (backoff_factor ** retry_count)
+            print(f"API request error: {e}. Waiting for {wait_time} seconds before retrying...")
+            time.sleep(wait_time)
+            retry_count += 1
+    
+    # If we get here, all retries failed
+    print("Maximum retries reached. Using sample question instead.")
+    return create_sample_question(lesson, difficulty)
 
 
 def create_sample_question(lesson: str, difficulty: str) -> Dict[str, Any]:
@@ -433,37 +456,42 @@ def upload_to_supabase(question_data: Dict[str, Any]) -> str:
 
 def generate_and_upload_batch(lesson: str, difficulty: str, count: int = 5, use_sample: bool = False) -> List[str]:
     """
-    Generate and upload a batch of questions
+    Generate a batch of questions and upload them to Supabase.
     
     Args:
         lesson: The lesson name
-        difficulty: Difficulty level
+        difficulty: The difficulty level
         count: Number of questions to generate
-        use_sample: Whether to use sample questions instead of calling the API
+        use_sample: Whether to use sample data instead of the API
         
     Returns:
-        List of inserted question IDs
+        List of question IDs that were successfully uploaded
     """
+    if use_sample:
+        os.environ["USE_SAMPLE"] = "True"
+    else:
+        os.environ["USE_SAMPLE"] = "False"
+        
     question_ids = []
     
     for i in range(count):
         try:
+            print(f"\nGenerating {difficulty} question {i+1}/{count} for {lesson}...")
+            
             # Generate the question
-            if use_sample:
-                question_data = create_sample_question(lesson, difficulty)
-                print(f"Created sample question for {lesson}, difficulty: {difficulty}")
-            else:
-                question_data = generate_question(lesson, difficulty)
+            question_data = generate_question(lesson, difficulty)
             
             # Upload to Supabase
             question_id = upload_to_supabase(question_data)
             question_ids.append(question_id)
             
-            print(f"Completed {i+1}/{count} questions")
+            print(f"Successfully uploaded question {i+1}. ID: {question_id}")
             
-            # Add a small delay to avoid rate limiting
-            if i < count - 1:
-                time.sleep(1)
+            # Add delay between requests to avoid overwhelming the API
+            if i < count - 1 and not use_sample:
+                wait_time = 3  # Increased delay between API calls
+                print(f"Waiting {wait_time} seconds before next request...")
+                time.sleep(wait_time)
                 
         except Exception as e:
             print(f"Error processing question {i+1}: {str(e)}")
@@ -475,7 +503,7 @@ if __name__ == "__main__":
     # Configuration for our batch
     lesson = "Reading Fluency"
     difficulty = "easy"
-    batch_size = 5  # Generate 5 questions per difficulty level
+    batch_size = 3  # Reduced batch size to avoid rate limits
     use_sample = False  # Use real API calls
     
     print(f"Starting generation and upload of {batch_size} questions for {lesson} at {difficulty} difficulty")
@@ -486,10 +514,19 @@ if __name__ == "__main__":
     print(f"Successfully generated and uploaded {len(easy_ids)} easy questions")
     print(f"Question IDs: {easy_ids}")
     
+    # Add longer delay between difficulty levels
+    wait_time = 10
+    print(f"\nWaiting {wait_time} seconds before processing medium difficulty questions...")
+    time.sleep(wait_time)
+    
     # Generate medium difficulty questions
     print("\nGenerating medium difficulty questions...")
     medium_ids = generate_and_upload_batch(lesson, "medium", batch_size, use_sample)
     print(f"Successfully generated and uploaded {len(medium_ids)} medium questions")
+    
+    # Add longer delay between difficulty levels
+    print(f"\nWaiting {wait_time} seconds before processing hard difficulty questions...")
+    time.sleep(wait_time)
     
     # Generate hard difficulty questions
     print("\nGenerating hard difficulty questions...")
