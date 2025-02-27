@@ -779,10 +779,10 @@ def generate_and_upload_batch(lesson: str, difficulty: str, count: int = 5, use_
 
 if __name__ == "__main__":
     # Configuration for our batch
-    lesson = "Reading Fluency"
+    lesson = "Vocabulary Acquisition"
     difficulty = "easy"
-    batch_size = 10  # Reduced batch size to avoid rate limits
-    use_sample = False  # Use real API calls
+    batch_size = 100
+    use_sample = False
     
     print(f"Starting generation and upload of {batch_size} questions for {lesson} at {difficulty} difficulty")
     print(f"Using sample questions: {use_sample}")
