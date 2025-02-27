@@ -238,12 +238,47 @@ def parse_question_content(raw_content: str, lesson: str, difficulty: str) -> Di
     for i, line in enumerate(non_empty_lines):
         stripped_line = line.lower().strip()
         if "correct answer" in stripped_line or "the correct answer is" in stripped_line:
-            # Extract the letter of the correct answer
-            for letter in ["A", "B", "C", "D"]:
-                if letter in line:
-                    correct_answer = letter
+            # Extract the letter of the correct answer using more precise patterns
+            
+            # Look for patterns like "Correct Answer: B" or "The correct answer is C"
+            if ":" in line:
+                parts = line.split(":", 1)
+                answer_part = parts[1].strip()
+                
+                # Check if the first character is a letter (A, B, C, D)
+                if answer_part and answer_part[0] in ["A", "B", "C", "D"]:
+                    correct_answer = answer_part[0]
                     break
+                    
+                # Check for patterns like "B)" or "C."
+                for letter in ["A", "B", "C", "D"]:
+                    if answer_part.startswith(f"{letter})") or answer_part.startswith(f"{letter}."):
+                        correct_answer = letter
+                        break
+                    
+            # Try to find patterns with explicit mentions like "Answer B is correct"
+            if not correct_answer:
+                for letter in ["A", "B", "C", "D"]:
+                    # Look for patterns where the letter is followed by specific delimiters
+                    # to avoid matching A in "Answer"
+                    if f" {letter})" in line or f" {letter}." in line or f" {letter} " in line:
+                        correct_answer = letter
+                        break
             break
+    
+    # If we still don't have a correct answer but have answer choices
+    if not correct_answer and answer_choices:
+        # Check for other instances of "correct" near option letters in the content
+        for i, line in enumerate(non_empty_lines):
+            if "correct" in line.lower():
+                for letter in ["A", "B", "C", "D"]:
+                    # Look for letter at the beginning of the line or after clear delimiters
+                    if (line.strip().startswith(f"{letter})") or 
+                        line.strip().startswith(f"{letter}.") or 
+                        f" {letter})" in line or 
+                        f" {letter}." in line):
+                        correct_answer = letter
+                        break
     
     # If we have answer choices but no prompt, and the stimuli might contain the prompt
     if answer_choices and not prompt and stimuli:
@@ -746,7 +781,7 @@ if __name__ == "__main__":
     # Configuration for our batch
     lesson = "Reading Fluency"
     difficulty = "easy"
-    batch_size = 7  # Reduced batch size to avoid rate limits
+    batch_size = 10  # Reduced batch size to avoid rate limits
     use_sample = False  # Use real API calls
     
     print(f"Starting generation and upload of {batch_size} questions for {lesson} at {difficulty} difficulty")
