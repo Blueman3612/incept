@@ -3,6 +3,7 @@ import json
 import requests
 from typing import Dict, Any, List, Optional
 import time
+import argparse
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -777,46 +778,158 @@ def generate_and_upload_batch(lesson: str, difficulty: str, count: int = 5, use_
     return question_ids
 
 
-if __name__ == "__main__":
-    # Configuration for our batch
-    lesson = "Vocabulary Acquisition"
-    difficulty = "easy"
-    batch_size = 100
-    use_sample = False
+def get_available_lessons() -> List[str]:
+    """
+    Returns a list of available lessons from the curriculum.
     
-    print(f"Starting generation and upload of {batch_size} questions for {lesson} at {difficulty} difficulty")
-    print(f"Using sample questions: {use_sample}")
+    Returns:
+        List of lesson names
+    """
+    return [
+        # Reading Fundamentals
+        "Reading Fluency",
+        "Vocabulary Acquisition",
+        "Academic Vocabulary",
+        "Genre Studies",
+        
+        # Reading Comprehension
+        "Main Idea and Supporting Details",
+        "Textual Details",
+        "Text Structure and Organization",
+        "Integration of Knowledge",
+        "Point of View",
+        "Character Analysis",
+        "Theme and Summary",
+        "Figurative Language",
+        
+        # Language Conventions
+        "Grammar and Usage",
+        "Capitalization and Punctuation",
+        "Language Conventions"
+    ]
+
+
+if __name__ == "__main__":
+    # Set up argument parser
+    parser = argparse.ArgumentParser(
+        description="Generate and upload educational questions for Grade 4 Language Arts",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    
+    # Required arguments
+    parser.add_argument("lesson", type=str, 
+                        help="The lesson to generate questions for (e.g., 'Vocabulary Acquisition')")
+    
+    # Optional arguments with defaults
+    parser.add_argument("--easy", type=int, default=0,
+                        help="Number of easy questions to generate")
+    parser.add_argument("--medium", type=int, default=0, 
+                        help="Number of medium questions to generate")
+    parser.add_argument("--hard", type=int, default=0,
+                        help="Number of hard questions to generate")
+    parser.add_argument("--sample", action="store_true",
+                        help="Use sample questions instead of generating with API")
+    parser.add_argument("--list-lessons", action="store_true",
+                        help="List all available lessons and exit")
+    
+    # Parse arguments
+    args = parser.parse_args()
+    
+    # If --list-lessons flag is provided, print available lessons and exit
+    if args.list_lessons:
+        print("Available lessons:")
+        for lesson in get_available_lessons():
+            print(f"  - {lesson}")
+        exit(0)
+    
+    # Verify the requested lesson is valid
+    available_lessons = get_available_lessons()
+    lesson = args.lesson
+    
+    # Check if the lesson exists (with case-insensitive matching)
+    lesson_found = False
+    for available_lesson in available_lessons:
+        if lesson.lower() == available_lesson.lower():
+            lesson = available_lesson  # Use the properly cased version
+            lesson_found = True
+            break
+    
+    if not lesson_found:
+        print(f"Warning: '{lesson}' doesn't exactly match any known lesson.")
+        print("Available lessons:")
+        for available_lesson in available_lessons:
+            print(f"  - {available_lesson}")
+        
+        proceed = input("Do you want to proceed anyway? (y/n): ")
+        if proceed.lower() not in ["y", "yes"]:
+            print("Exiting.")
+            exit(1)
+    
+    # Check if at least one difficulty has a non-zero count
+    total_questions = args.easy + args.medium + args.hard
+    if total_questions == 0:
+        print("Error: You must specify at least one question to generate.")
+        print("Use --easy, --medium, or --hard with a positive number.")
+        exit(1)
+    
+    # Configuration from arguments
+    use_sample = args.sample
+    
+    print(f"\nStarting generation for lesson: {lesson}")
     
     # Get the lesson description for the main output
     lesson_description = get_lesson_description(lesson)
     if lesson_description:
         print(f"Lesson description: {lesson_description}")
     
-    # Generate and upload questions for easy difficulty
-    easy_ids = generate_and_upload_batch(lesson, difficulty, batch_size, use_sample)
-    print(f"Successfully generated and uploaded {len(easy_ids)} easy questions")
-    print(f"Question IDs: {easy_ids}")
+    print(f"Total questions to generate: {total_questions}")
+    print(f"  - Easy: {args.easy}")
+    print(f"  - Medium: {args.medium}")
+    print(f"  - Hard: {args.hard}")
+    print(f"Using sample questions: {use_sample}")
     
-    # Add longer delay between difficulty levels
-    wait_time = 10
-    print(f"\nWaiting {wait_time} seconds before processing medium difficulty questions...")
-    time.sleep(wait_time)
+    # List to store all generated question IDs
+    all_ids = []
     
-    # Generate medium difficulty questions
-    print("\nGenerating medium difficulty questions...")
-    medium_ids = generate_and_upload_batch(lesson, "medium", batch_size, use_sample)
-    print(f"Successfully generated and uploaded {len(medium_ids)} medium questions")
+    # Generate easy questions if requested
+    if args.easy > 0:
+        print(f"\nGenerating {args.easy} easy questions for {lesson}...")
+        easy_ids = generate_and_upload_batch(lesson, "easy", args.easy, use_sample)
+        all_ids.extend(easy_ids)
+        print(f"Successfully generated and uploaded {len(easy_ids)} easy questions")
+        
+        # Add delay before next batch if we're generating more questions
+        if args.medium > 0 or args.hard > 0:
+            wait_time = 10
+            print(f"\nWaiting {wait_time} seconds before processing next batch...")
+            time.sleep(wait_time)
     
-    # Add longer delay between difficulty levels
-    print(f"\nWaiting {wait_time} seconds before processing hard difficulty questions...")
-    time.sleep(wait_time)
+    # Generate medium questions if requested
+    if args.medium > 0:
+        print(f"\nGenerating {args.medium} medium questions for {lesson}...")
+        medium_ids = generate_and_upload_batch(lesson, "medium", args.medium, use_sample)
+        all_ids.extend(medium_ids)
+        print(f"Successfully generated and uploaded {len(medium_ids)} medium questions")
+        
+        # Add delay before next batch if we're generating more questions
+        if args.hard > 0:
+            wait_time = 10
+            print(f"\nWaiting {wait_time} seconds before processing next batch...")
+            time.sleep(wait_time)
     
-    # Generate hard difficulty questions
-    print("\nGenerating hard difficulty questions...")
-    hard_ids = generate_and_upload_batch(lesson, "hard", batch_size, use_sample)
-    print(f"Successfully generated and uploaded {len(hard_ids)} hard questions")
+    # Generate hard questions if requested
+    if args.hard > 0:
+        print(f"\nGenerating {args.hard} hard questions for {lesson}...")
+        hard_ids = generate_and_upload_batch(lesson, "hard", args.hard, use_sample)
+        all_ids.extend(hard_ids)
+        print(f"Successfully generated and uploaded {len(hard_ids)} hard questions")
     
     # Summary
-    total_questions = len(easy_ids) + len(medium_ids) + len(hard_ids)
-    print(f"\nTotal questions generated and uploaded: {total_questions}")
-    print(f"Easy: {len(easy_ids)}, Medium: {len(medium_ids)}, Hard: {len(hard_ids)}") 
+    print(f"\nGeneration complete!")
+    print(f"Total questions generated and uploaded: {len(all_ids)}")
+    if args.easy > 0:
+        print(f"  - Easy: {args.easy}")
+    if args.medium > 0:
+        print(f"  - Medium: {args.medium}")
+    if args.hard > 0:
+        print(f"  - Hard: {args.hard}") 
