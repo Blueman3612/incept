@@ -364,6 +364,7 @@ IMPORTANT REQUIREMENTS:
 5. Keep all the required parts: passage, question, options, explanations, and solution
 6. Ensure there is ONE unambiguously correct answer
 7. The question MUST specifically target the skills for this lesson: {lesson}
+8. IMPORTANT: Ensure the correct answer is evenly distributed - don't always use the same letter for the correct answer
 
 FORMAT THE QUESTION EXACTLY LIKE THE EXAMPLE ABOVE but with new content.
 """
@@ -400,6 +401,9 @@ Content Requirements:
 5. Provide a step-by-step solution with 3-4 steps
 6. Ensure there is ONE unambiguously correct answer
 7. The question MUST specifically target the skills for this lesson: {lesson}
+8. IMPORTANT: The correct answer should be assigned to option A, B, C, or D with equal probability
+   Do NOT consistently make the same letter (like B or C) the correct answer
+   For every question, deliberately vary which option is correct
 
 FORMAT THE QUESTION EXACTLY LIKE THIS:
 Read the following passage and answer the question.
@@ -413,7 +417,7 @@ B) [Option]
 C) [Option]
 D) [Option]
 
-Correct Answer: [Letter]
+Correct Answer: [Letter - randomly choose A, B, C or D as the correct answer]
 
 Explanation for wrong answers:
 A) [If incorrect: Clear explanation why this is wrong - must be a complete thought]
@@ -560,6 +564,8 @@ IMPORTANT:
 7. Keep language appropriate for 9-10 year olds
 8. Make sure all explanations are complete and educational
 9. The question MUST specifically target the skills for this lesson: {lesson}
+10. IMPORTANT: Ensure the correct answer has equal chance of being A, B, C, or D
+    Do NOT consistently make the same letter the correct answer
 
 Return the complete improved question with all components.
 """
