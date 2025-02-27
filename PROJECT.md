@@ -365,24 +365,24 @@ Once the server is running, access the interactive API documentation at:
 The curriculum for Grade 4 Language Arts is organized into three main categories:
 
 ### Reading Fundamentals (Start here to build core skills)
-- Reading Fluency
-- Vocabulary Acquisition
-- Academic Vocabulary
-- Genre Studies
+- Reading Fluency: Developing accuracy, appropriate reading rate, and expression when reading aloud and silently
+- Vocabulary Acquisition: Learning strategies to determine meanings of unknown words and phrases
+- Academic Vocabulary: Understanding domain-specific terminology and academic language used in texts
+- Genre Studies: Recognizing and analyzing characteristics of different text types (poetry, drama, prose, informational)
 
 ### Reading Comprehension (Build on fundamentals with deeper analysis)
-- Main Idea and Supporting Details
-- Textual Details
-- Text Structure and Organization
-- Integration of Knowledge
-- Point of View
-- Character Analysis
-- Theme and Summary
-- Figurative Language
+- Main Idea and Supporting Details: Identifying central messages and key details that support them
+- Textual Details: Analyzing specific elements within text that contribute to meaning
+- Text Structure and Organization: Recognizing different organizational patterns like chronology, cause/effect, and problem/solution
+- Integration of Knowledge: Connecting and synthesizing information across multiple texts or sources
+- Point of View: Distinguishing between first and third-person narrations and comparing different perspectives
+- Character Analysis: Examining character traits, motivations, and development throughout texts
+- Theme and Summary: Determining central themes and creating concise summaries of texts
+- Figurative Language: Understanding metaphors, similes, idioms, and other non-literal language
 
 ### Language Conventions (Apply language skills to strengthen comprehension)
-- Grammar and Usage
-- Capitalization and Punctuation
-- Language Conventions
+- Grammar and Usage: Understanding standard English grammar rules and applying them to reading contexts
+- Capitalization and Punctuation: Recognizing proper use of capitals and punctuation marks in text
+- Language Conventions: Mastering standard English usage rules including spelling patterns and word relationships
 
 Each lesson includes DI-style articles with worked examples and comprehensive question banks with at least 100 questions per difficulty level (easy, medium, hard). 

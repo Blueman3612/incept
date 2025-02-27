@@ -222,7 +222,8 @@ class QuestionGenerator:
                         difficulty: str, 
                         example_question: Optional[str] = None,
                         max_retries: int = 1,
-                        metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                        metadata: Optional[Dict[str, Any]] = None,
+                        lesson_description: Optional[str] = None) -> Dict[str, Any]:
         """
         Generate a high-quality question that passes our grader.
         
@@ -232,19 +233,22 @@ class QuestionGenerator:
             example_question: Optional example to create a variation from
             max_retries: Maximum number of improvement attempts if question fails
             metadata: Additional metadata to pass to the grader (e.g., grade_level)
+            lesson_description: Optional detailed description of the lesson's learning objectives
             
         Returns:
             Dict containing the generated question, quality assessment, and metadata
         """
         logger.info(f"Generating question for lesson: {lesson}, difficulty: {difficulty}")
         logger.info(f"Max retries: {max_retries}, Example provided: {example_question is not None}")
+        if lesson_description:
+            logger.info(f"Using lesson description: {lesson_description}")
         
         # Set default metadata if not provided
         if metadata is None:
             metadata = {"grade_level": 4, "subject": "Language Arts"}
         
         # Generate initial question
-        question_content = self._generate_initial_question(lesson, difficulty, example_question)
+        question_content = self._generate_initial_question(lesson, difficulty, example_question, lesson_description)
         
         # Grade the initial question
         grading_result = grade_question(question_content, metadata)
@@ -266,7 +270,7 @@ class QuestionGenerator:
             
             # Generate improved question using feedback
             question_content = self._generate_improved_question(
-                lesson, difficulty, question_content, feedback, example_question
+                lesson, difficulty, question_content, feedback, example_question, lesson_description
             )
             
             # Grade the improved question
@@ -303,7 +307,11 @@ class QuestionGenerator:
         logger.info(f"Question generation complete. Success: {result['quality']['passed']}")
         return result
     
-    def _generate_initial_question(self, lesson: str, difficulty: str, example_question: Optional[str] = None) -> str:
+    def _generate_initial_question(self, 
+                                lesson: str, 
+                                difficulty: str, 
+                                example_question: Optional[str] = None,
+                                lesson_description: Optional[str] = None) -> str:
         """
         Generate the initial question content either from scratch or based on an example.
         
@@ -311,6 +319,7 @@ class QuestionGenerator:
             lesson: The lesson topic
             difficulty: Difficulty level
             example_question: Optional example to base the question on
+            lesson_description: Optional detailed description of the lesson's learning objectives
             
         Returns:
             Generated question content
@@ -329,12 +338,23 @@ LANGUAGE GUIDELINES FOR GRADE 4:
         # Handle variation generation if example_question is provided
         if example_question:
             logger.info("Generating a variation based on example question")
+            
+            lesson_context = ""
+            if lesson_description:
+                lesson_context = f"""
+LESSON DESCRIPTION: {lesson_description}
+
+Your question MUST specifically assess the learning objectives described above.
+Make sure your question targets these specific skills and not just general reading comprehension.
+"""
+            
             prompt = f"""Generate a Grade 4 Language Arts question variation for the lesson on "{lesson}" at {difficulty} difficulty level.
 This is based on the following example question:
 
 {example_question}
 
 {language_guidance}
+{lesson_context}
 
 IMPORTANT REQUIREMENTS:
 1. Keep the same general structure and question type
@@ -343,19 +363,34 @@ IMPORTANT REQUIREMENTS:
 4. Use the same number of options
 5. Keep all the required parts: passage, question, options, explanations, and solution
 6. Ensure there is ONE unambiguously correct answer
+7. The question MUST specifically target the skills for this lesson: {lesson}
 
 FORMAT THE QUESTION EXACTLY LIKE THE EXAMPLE ABOVE but with new content.
 """
         else:
             # Create a new question from scratch
             logger.info("Generating a new question from scratch")
-            #selected_context = random.choice(self.contexts)
             selected_structure = random.choice(self.structures)
             selected_topic = random.choice(self.topics)
+            
+            # Determine the appropriate structure based on the lesson
+            if lesson_description:
+                # Use the lesson description to determine the most appropriate structure
+                selected_structure = self._get_appropriate_structure_for_lesson(lesson, lesson_description)
+                
+                lesson_context = f"""
+LESSON DESCRIPTION: {lesson_description}
+
+Your question MUST specifically assess the learning objectives described above.
+Make sure your question targets these specific skills and not just general reading comprehension.
+"""
+            else:
+                lesson_context = ""
             
             prompt = f"""Generate a high-quality Grade 4 Language Arts question for the lesson on "{lesson}" at {difficulty} difficulty level.
 
 {language_guidance}
+{lesson_context}
 
 Content Requirements:
 1. Write a passage about {selected_topic}
@@ -364,13 +399,14 @@ Content Requirements:
 4. Include COMPLETE explanations for each wrong answer
 5. Provide a step-by-step solution with 3-4 steps
 6. Ensure there is ONE unambiguously correct answer
+7. The question MUST specifically target the skills for this lesson: {lesson}
 
 FORMAT THE QUESTION EXACTLY LIKE THIS:
 Read the following passage and answer the question.
 
 [Write a grade-appropriate passage with short sentences]
 
-[Clear, unambiguous question]
+[Clear, unambiguous question that directly tests the lesson's skills]
 
 A) [Option]
 B) [Option]
@@ -394,6 +430,51 @@ Solution:
         # Generate content using OpenAI
         logger.info(f"Sending generation prompt to {self.model}")
         return self._generate_with_gpt(prompt)
+    
+    def _get_appropriate_structure_for_lesson(self, lesson: str, lesson_description: str) -> str:
+        """
+        Determine the most appropriate question structure based on the lesson and its description.
+        
+        Args:
+            lesson: The lesson name
+            lesson_description: Description of the lesson's learning objectives
+            
+        Returns:
+            The most appropriate question structure for this lesson
+        """
+        lesson_lower = lesson.lower()
+        description_lower = lesson_description.lower()
+        
+        # Map lessons to appropriate question structures
+        if "main idea" in lesson_lower or "central message" in description_lower:
+            return "a main idea question"
+        elif "supporting detail" in lesson_lower or "key detail" in description_lower:
+            return "a supporting details question"
+        elif "compare" in lesson_lower or "contrast" in description_lower:
+            return "a compare and contrast question"
+        elif "cause" in lesson_lower or "effect" in description_lower:
+            return "a cause and effect question"
+        elif "vocabulary" in lesson_lower or "word meaning" in description_lower:
+            return "a vocabulary in context question"
+        elif "sequence" in lesson_lower or "chronolog" in description_lower:
+            return "a sequencing question"
+        elif "infer" in lesson_lower or "impli" in description_lower:
+            return "an inference question"
+        elif "character" in lesson_lower or "trait" in description_lower:
+            return "a character trait question"
+        elif "author" in lesson_lower or "purpose" in description_lower:
+            return "an author's purpose question"
+        elif "fact" in lesson_lower or "opinion" in description_lower:
+            return "a fact vs. opinion question"
+        elif "figurative" in lesson_lower or "metaphor" in description_lower or "simile" in description_lower:
+            return "a figurative language question"
+        elif "theme" in lesson_lower or "central theme" in description_lower:
+            return "a theme identification question"
+        elif "point of view" in lesson_lower or "perspective" in description_lower:
+            return "a point of view question"
+        else:
+            # If no specific mapping is found, pick an appropriate structure randomly
+            return random.choice(self.structures)
     
     def _extract_improvement_feedback(self, grading_result: Dict[str, Any]) -> str:
         """
@@ -426,7 +507,8 @@ Solution:
                                  difficulty: str, 
                                  original_question: str, 
                                  feedback: str,
-                                 example_question: Optional[str] = None) -> str:
+                                 example_question: Optional[str] = None,
+                                 lesson_description: Optional[str] = None) -> str:
         """
         Generate an improved version of the question based on grader feedback.
         
@@ -436,6 +518,7 @@ Solution:
             original_question: The original question content
             feedback: Feedback from the grader
             example_question: Optional example question (for context)
+            lesson_description: Optional detailed description of the lesson's learning objectives
             
         Returns:
             Improved question content
@@ -445,9 +528,19 @@ Solution:
         # If the issue is with the content/topic itself, select a new topic
         selected_topic = random.choice(self.topics)
         
+        lesson_context = ""
+        if lesson_description:
+            lesson_context = f"""
+LESSON DESCRIPTION: {lesson_description}
+
+Your question MUST specifically assess the learning objectives described above.
+Make sure your question targets these specific skills and not just general reading comprehension.
+"""
+        
         # Create a detailed prompt for improvement
         prompt = f"""You are an expert educational content developer tasked with improving a Grade 4 Language Arts question.
 The question is for a lesson on "{lesson}" at {difficulty} difficulty level.
+{lesson_context}
 
 Here is the original question:
 ```
@@ -466,6 +559,7 @@ IMPORTANT:
 6. Ensure there is ONE unambiguously correct answer
 7. Keep language appropriate for 9-10 year olds
 8. Make sure all explanations are complete and educational
+9. The question MUST specifically target the skills for this lesson: {lesson}
 
 Return the complete improved question with all components.
 """
@@ -562,7 +656,8 @@ def generate_question_with_grading(
     difficulty: str, 
     example_question: Optional[str] = None,
     max_retries: int = 1,
-    metadata: Optional[Dict[str, Any]] = None
+    metadata: Optional[Dict[str, Any]] = None,
+    lesson_description: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Generate a question for the given parameters that passes our quality standards.
@@ -573,6 +668,7 @@ def generate_question_with_grading(
         example_question: Optional example to create a variation from
         max_retries: Maximum number of improvement attempts if question fails
         metadata: Additional metadata to pass to the grader
+        lesson_description: Optional detailed description of the lesson's learning objectives
         
     Returns:
         Dict containing the generated question, quality assessment, and metadata
@@ -582,5 +678,6 @@ def generate_question_with_grading(
         difficulty=difficulty,
         example_question=example_question,
         max_retries=max_retries,
-        metadata=metadata
+        metadata=metadata,
+        lesson_description=lesson_description
     ) 

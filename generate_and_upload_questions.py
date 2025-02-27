@@ -20,6 +20,59 @@ GENERATE_ENDPOINT = f"{API_BASE_URL}/api/v1/questions/generate"
 GRADE_ENDPOINT = f"{API_BASE_URL}/api/v1/questions/grade"
 
 
+def get_lesson_description(lesson: str) -> Optional[str]:
+    """
+    Get the detailed description for a specific lesson based on PROJECT.md curriculum.
+    
+    Args:
+        lesson: The name of the lesson
+        
+    Returns:
+        The lesson description or None if not found
+    """
+    # Map of lesson names to their descriptions
+    lesson_descriptions = {
+        # Reading Fundamentals
+        "Reading Fluency": "Developing accuracy, appropriate reading rate, and expression when reading aloud and silently",
+        "Vocabulary Acquisition": "Learning strategies to determine meanings of unknown words and phrases",
+        "Academic Vocabulary": "Understanding domain-specific terminology and academic language used in texts",
+        "Genre Studies": "Recognizing and analyzing characteristics of different text types (poetry, drama, prose, informational)",
+        
+        # Reading Comprehension
+        "Main Idea and Supporting Details": "Identifying central messages and key details that support them",
+        "Textual Details": "Analyzing specific elements within text that contribute to meaning",
+        "Text Structure and Organization": "Recognizing different organizational patterns like chronology, cause/effect, and problem/solution",
+        "Integration of Knowledge": "Connecting and synthesizing information across multiple texts or sources",
+        "Point of View": "Distinguishing between first and third-person narrations and comparing different perspectives",
+        "Character Analysis": "Examining character traits, motivations, and development throughout texts",
+        "Theme and Summary": "Determining central themes and creating concise summaries of texts",
+        "Figurative Language": "Understanding metaphors, similes, idioms, and other non-literal language",
+        
+        # Language Conventions
+        "Grammar and Usage": "Understanding standard English grammar rules and applying them to reading contexts",
+        "Capitalization and Punctuation": "Recognizing proper use of capitals and punctuation marks in text",
+        "Language Conventions": "Mastering standard English usage rules including spelling patterns and word relationships"
+    }
+    
+    # Check for exact match first
+    if lesson in lesson_descriptions:
+        return lesson_descriptions[lesson]
+    
+    # If no exact match, try case-insensitive matching
+    for key, description in lesson_descriptions.items():
+        if key.lower() == lesson.lower():
+            return description
+    
+    # If still no match, check if any key contains the lesson name (or vice versa)
+    for key, description in lesson_descriptions.items():
+        if lesson.lower() in key.lower() or key.lower() in lesson.lower():
+            return description
+    
+    # No match found
+    print(f"Warning: No description found for lesson '{lesson}'")
+    return None
+
+
 def parse_question_content(raw_content: str, lesson: str, difficulty: str) -> Dict[str, Any]:
     """
     Parse the raw question content into a structured format.
@@ -366,11 +419,20 @@ def generate_question(lesson: str, difficulty: str, additional_instructions: Opt
     
     url = f"{API_BASE_URL}/api/v1/questions/generate"
     
+    # Get the lesson description
+    lesson_description = get_lesson_description(lesson)
+    if lesson_description:
+        print(f"Using lesson description: {lesson_description}")
+    
     payload = {
         "type": "new",
         "lesson": lesson,
         "difficulty": difficulty
     }
+    
+    # Add the lesson description if available
+    if lesson_description:
+        payload["lesson_description"] = lesson_description
     
     if additional_instructions:
         payload["additional_instructions"] = additional_instructions
@@ -441,6 +503,9 @@ def create_sample_question(lesson: str, difficulty: str) -> Dict[str, Any]:
     Returns:
         A sample question data dictionary
     """
+    # Get lesson description for more context-aware samples
+    lesson_description = get_lesson_description(lesson)
+    
     # Sample content matching the expected format for testing the parser
     if lesson == "Reading Fluency":
         return {
@@ -491,17 +556,72 @@ Solution:
             "full_explanation": "The statement \"Cumulus clouds are the most beautiful type of cloud\" is an opinion because it expresses a subjective judgment about beauty, which is based on personal preference and cannot be proven true or false.",
             "status": "active"
         }
-    else:
-        # For other lessons, create a generic sample
+    elif lesson == "Main Idea and Supporting Details" and lesson_description:
         return {
-            "content": f"Sample question for {lesson} at {difficulty} difficulty. This is a question to test reading comprehension. What is the main idea?\n\nA) First option\nB) Second option\nC) Third option\nD) Fourth option\n\nCorrect Answer: A\n\nExplanation for wrong answers:\nB) This is incorrect because...\nC) This is incorrect because...\nD) This is incorrect because...\n\nSolution:\nThe correct approach is to identify the main idea by...",
+            "content": f"""Read the following passage and answer the question.
+
+The school garden project has been a big success this year. Students planted vegetables in the spring. Throughout summer, they took turns watering the plants. By fall, they harvested tomatoes, carrots, and lettuce. The vegetables were used in the school cafeteria. Teachers said it was a great way for students to learn about plant growth and healthy eating.
+
+What is the main idea of this passage?
+
+A) Students planted vegetables in the spring.
+B) The school garden project was successful and educational.
+C) Vegetables from the garden were used in the cafeteria.
+D) Teachers thought the garden was a good learning experience.
+
+Correct Answer: B
+
+Explanation for wrong answers:
+A) This is incorrect because it only mentions one detail from the passage (planting in spring) rather than the central message.
+C) This is incorrect because it focuses on just one supporting detail about how the vegetables were used, not the main point of the passage.
+D) This is incorrect because the teachers' opinions are just one supporting detail, not the main idea of the entire passage.
+
+Solution:
+1. Read the entire passage carefully.
+2. Identify what the passage is mainly about (the school garden project's success).
+3. Determine which sentence captures the central message that ties together all the details.
+4. Choose the option that expresses this central message rather than just a supporting detail.""",
             "lesson": lesson,
             "grade": 4,
             "course": "Language",
             "difficulty": difficulty,
             "interaction_type": "MCQ",
-            "stimuli": f"Sample passage for testing {lesson} comprehension. This is a short paragraph that covers key concepts in {lesson}.",
-            "prompt": f"What is the main idea of the {lesson} passage?",
+            "stimuli": "The school garden project has been a big success this year. Students planted vegetables in the spring. Throughout summer, they took turns watering the plants. By fall, they harvested tomatoes, carrots, and lettuce. The vegetables were used in the school cafeteria. Teachers said it was a great way for students to learn about plant growth and healthy eating.",
+            "prompt": "What is the main idea of this passage?",
+            "answer_choices": {
+                "A": "Students planted vegetables in the spring.",
+                "B": "The school garden project was successful and educational.", 
+                "C": "Vegetables from the garden were used in the cafeteria.", 
+                "D": "Teachers thought the garden was a good learning experience."
+            },
+            "correct_answer": "B",
+            "wrong_answer_explanations": {
+                "A": "This is incorrect because it only mentions one detail from the passage (planting in spring) rather than the central message.",
+                "C": "This is incorrect because it focuses on just one supporting detail about how the vegetables were used, not the main point of the passage.",
+                "D": "This is incorrect because the teachers' opinions are just one supporting detail, not the main idea of the entire passage."
+            },
+            "solution": "1. Read the entire passage carefully. 2. Identify what the passage is mainly about (the school garden project's success). 3. Determine which sentence captures the central message that ties together all the details. 4. Choose the option that expresses this central message rather than just a supporting detail.",
+            "full_explanation": "The main idea is the central point or message of a passage. In this passage, all the details support the idea that the school garden project was successful and educational. The other options only represent supporting details that help develop this main idea.",
+            "status": "active"
+        }
+    else:
+        # For other lessons, create a more targeted sample based on lesson description
+        sample_passage = f"This is a sample passage about {lesson.lower()} concepts."
+        sample_prompt = f"What is the main concept illustrated in this passage about {lesson.lower()}?"
+        
+        if lesson_description:
+            sample_passage = f"This sample passage demonstrates {lesson_description.lower()}."
+            sample_prompt = f"Based on {lesson_description.lower()}, what does this passage show?"
+        
+        return {
+            "content": f"Sample question for {lesson} at {difficulty} difficulty. {sample_prompt}\n\nA) First option\nB) Second option\nC) Third option\nD) Fourth option\n\nCorrect Answer: A\n\nExplanation for wrong answers:\nB) This is incorrect because...\nC) This is incorrect because...\nD) This is incorrect because...\n\nSolution:\nThe correct approach is to analyze the passage by focusing on {lesson_description if lesson_description else lesson}...",
+            "lesson": lesson,
+            "grade": 4,
+            "course": "Language",
+            "difficulty": difficulty,
+            "interaction_type": "MCQ",
+            "stimuli": sample_passage,
+            "prompt": sample_prompt,
             "answer_choices": {
                 "A": "First option",
                 "B": "Second option", 
@@ -514,8 +634,8 @@ Solution:
                 "C": "This is incorrect because...",
                 "D": "This is incorrect because..."
             },
-            "solution": "The correct approach is to identify the main idea by...",
-            "full_explanation": "A detailed explanation of the correct answer and why the others are wrong.",
+            "solution": f"The correct approach is to analyze the passage by focusing on {lesson_description if lesson_description else lesson}...",
+            "full_explanation": f"A detailed explanation relating to {lesson_description if lesson_description else lesson}.",
             "status": "active"
         }
 
@@ -591,6 +711,12 @@ def generate_and_upload_batch(lesson: str, difficulty: str, count: int = 5, use_
         
     question_ids = []
     
+    # Get the lesson description - print it once for the batch
+    lesson_description = get_lesson_description(lesson)
+    if lesson_description:
+        print(f"\nGenerating questions for lesson: {lesson}")
+        print(f"Lesson description: {lesson_description}")
+    
     for i in range(count):
         try:
             print(f"\nGenerating {difficulty} question {i+1}/{count} for {lesson}...")
@@ -620,11 +746,16 @@ if __name__ == "__main__":
     # Configuration for our batch
     lesson = "Reading Fluency"
     difficulty = "easy"
-    batch_size = 3  # Reduced batch size to avoid rate limits
+    batch_size = 7  # Reduced batch size to avoid rate limits
     use_sample = False  # Use real API calls
     
     print(f"Starting generation and upload of {batch_size} questions for {lesson} at {difficulty} difficulty")
     print(f"Using sample questions: {use_sample}")
+    
+    # Get the lesson description for the main output
+    lesson_description = get_lesson_description(lesson)
+    if lesson_description:
+        print(f"Lesson description: {lesson_description}")
     
     # Generate and upload questions for easy difficulty
     easy_ids = generate_and_upload_batch(lesson, difficulty, batch_size, use_sample)

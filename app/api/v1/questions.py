@@ -78,6 +78,7 @@ class EnhancedGenerateRequest(BaseModel):
     example_question: Optional[str] = Field(None, description="Optional example question to base the new one on")
     max_retries: Optional[int] = Field(1, ge=0, le=5, description="Maximum number of improvement attempts (0-5)")
     metadata: Optional[Dict[str, Any]] = Field(None, description="Additional metadata for the grader")
+    lesson_description: Optional[str] = Field(None, description="Detailed description of the lesson's learning objectives")
 
 # Simple string response model for question content
 class QuestionContentResponse(BaseModel):
@@ -89,13 +90,17 @@ async def generate_question(request: EnhancedGenerateRequest):
     """
     Generate a high-quality educational question that passes our strict quality checks.
     
-    This endpoint creates a Grade 4 Language Arts question based on:
+    This endpoint creates a Grade 4 Language question based on:
     - Lesson topic (e.g., "main_idea", "supporting_details", "authors_purpose")
     - Difficulty level ("easy", "medium", "hard")
+    - Lesson description (optional detailed description of the learning objectives)
     
     If generating a variation, provide an example_question to base the new question on.
     The max_retries parameter controls how many attempts will be made to improve a
     question that doesn't initially pass quality checks.
+    
+    Providing a lesson_description is highly recommended to generate questions that
+    specifically target the learning objectives of the lesson.
     
     The system uses our grader to evaluate quality and provide feedback for improvements.
     Questions are evaluated on completeness, answer quality, explanation quality, and
@@ -106,7 +111,7 @@ async def generate_question(request: EnhancedGenerateRequest):
     try:
         # Set default metadata if not provided
         if request.metadata is None:
-            metadata = {"grade_level": 4, "subject": "Language Arts"}
+            metadata = {"grade_level": 4, "subject": "Language"}
         else:
             metadata = request.metadata
         
@@ -116,7 +121,8 @@ async def generate_question(request: EnhancedGenerateRequest):
             difficulty=request.difficulty,
             example_question=request.example_question,
             max_retries=request.max_retries,
-            metadata=metadata
+            metadata=metadata,
+            lesson_description=request.lesson_description
         )
         
         # Return only the question content
