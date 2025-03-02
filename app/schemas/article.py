@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from datetime import datetime
 from enum import Enum
@@ -54,4 +54,21 @@ class ArticleGenerateRequest(BaseModel):
         default="standard",
         pattern="^(standard|creative|technical)$",
         description="Writing style of the article"
-    ) 
+    )
+
+
+class ArticleGradeRequest(BaseModel):
+    """Model for article grading request."""
+    content: str = Field(..., min_length=50, description="The article content to evaluate")
+    metadata: Optional[Dict[str, Any]] = Field(None, description="Optional metadata about the article")
+
+
+class ArticleGradeResponse(BaseModel):
+    """Model for article grading response."""
+    overall_score: float = Field(..., ge=0.0, le=1.0, description="Overall quality score (0.0-1.0)")
+    criterion_scores: Dict[str, float] = Field(..., description="Scores for each quality criterion")
+    criterion_feedback: Dict[str, str] = Field(..., description="Detailed feedback for each criterion")
+    critical_issues: List[str] = Field(default_factory=list, description="List of critical issues identified")
+    passing: bool = Field(..., description="Whether the article passes quality standards")
+    feedback: str = Field(..., description="Comprehensive feedback with improvement suggestions")
+    timestamp: str = Field(..., description="Timestamp of the evaluation") 
