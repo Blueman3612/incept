@@ -8,6 +8,7 @@ import os
 load_dotenv()
 
 from app.api.v1.questions import router as questions_router
+from app.api.v1.articles import router as articles_router
 
 # Get settings
 API_TITLE = "Educational Content Generation API"
@@ -34,6 +35,7 @@ app.add_middleware(
 
 # Include routers
 app.include_router(questions_router, prefix="/api/v1")
+app.include_router(articles_router, prefix="/api/v1")
 
 @app.get("/")
 async def root():

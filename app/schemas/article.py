@@ -49,13 +49,7 @@ class ArticleGenerateRequest(BaseModel):
     grade_level: int = Field(..., ge=1, le=8, description="Target grade level (1-8)")
     lesson: str = Field(..., min_length=3, max_length=200, description="The lesson topic (e.g., main_idea, supporting_details)")
     lesson_description: Optional[str] = Field(None, min_length=5, max_length=500, description="Optional detailed description of the lesson objectives")
-    difficulty: DifficultyLevel = Field(..., description="Difficulty level of the content")
     keywords: Optional[List[str]] = Field(default_factory=list, description="Key terms or concepts to include")
-    style: Optional[str] = Field(
-        default="standard",
-        pattern="^(standard|creative|technical)$",
-        description="Writing style of the article"
-    )
 
 
 class ArticleGradeRequest(BaseModel):

@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     API_TITLE: str = "Educational Content Generation API"
     API_DESCRIPTION: str = "API for generating and managing educational content for K-8 students"
     DEBUG: bool = False
+    API_BASE_URL: str = "http://localhost:8000"
+
+    # Auto Calibration
+    AUTO_CALIBRATE: bool = False
 
     # Supabase Settings
     SUPABASE_URL: str
@@ -30,6 +34,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
+        extra = "ignore"  # Allow extra fields in .env file
 
 
 @lru_cache()

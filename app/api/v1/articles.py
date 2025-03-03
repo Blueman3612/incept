@@ -1,12 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from typing import List
+import uuid
+from datetime import datetime
 
 from app.schemas.article import (
     ArticleGenerateRequest, 
     ArticleInDB, 
     ArticleResponse, 
     ArticleGradeRequest, 
-    ArticleGradeResponse
+    ArticleGradeResponse,
+    DifficultyLevel
 )
 from app.services.article_service import ArticleService
 from app.services.article_grader import grade_article
@@ -23,7 +26,6 @@ async def get_article_service() -> ArticleService:
 @router.post("/generate", response_model=ArticleResponse, status_code=201)
 async def generate_article(
     request: ArticleGenerateRequest,
-    article_service: ArticleService = Depends(get_article_service)
 ) -> ArticleResponse:
     """
     Generate an educational article based on the provided parameters.
@@ -47,29 +49,53 @@ async def generate_article(
     
     Args:
         request: Article generation parameters including lesson, grade level, course, etc.
-        article_service: Service for article operations (injected)
         
     Returns:
         ArticleResponse: The generated article
-        
-    Raises:
-        HTTPException: If article generation fails
     """
     try:
-        # Use our new generator with grading integration
-        article = generate_article_with_grading(
+        # Use our article generator with grading integration
+        print(f"Generating article for lesson: {request.lesson}, grade: {request.grade_level}, course: {request.course}")
+        result = generate_article_with_grading(
             lesson=request.lesson,
             grade_level=request.grade_level,
             course=request.course,
-            difficulty=request.difficulty.value,
             lesson_description=request.lesson_description,
             keywords=request.keywords,
-            max_retries=3,  # Default to 3 retries
-            metadata={"style": request.style} if request.style else None
+            max_retries=3  # Default to 3 retries
         )
         
-        return article
+        print(f"Article generated successfully: {result.get('title', 'No title')}")
+        
+        # Set default difficulty_level if not provided
+        difficulty_level = result.get('difficulty_level')
+        if difficulty_level is None:
+            difficulty_level = DifficultyLevel.INTERMEDIATE
+        
+        # Convert from the raw result to the expected response format
+        article_response = ArticleResponse(
+            id=result.get('id', str(uuid.uuid4())),
+            title=result.get('title', f"Article about {request.lesson}"),
+            content=result.get('content', ""),
+            grade_level=result.get('grade_level', request.grade_level),
+            subject=result.get('course', request.course),  # Map course to subject
+            created_at=result.get('created_at', datetime.now().isoformat()),
+            updated_at=result.get('updated_at', datetime.now().isoformat()),
+            tags=result.get('tags', request.keywords if request.keywords else []),
+            quality_score=result.get('quality_score', None),
+            readability_score=result.get('readability_score', None),
+            difficulty_level=difficulty_level,
+            key_concepts=result.get('key_concepts', []),
+            examples=result.get('examples', []),
+            target_age_range=result.get('target_age_range', [request.grade_level + 4, request.grade_level + 6])
+        )
+        
+        return article_response
+        
     except Exception as e:
+        import traceback
+        print(f"Error generating article: {str(e)}")
+        print(traceback.format_exc())
         raise HTTPException(
             status_code=500,
             detail=f"Failed to generate article: {str(e)}"
