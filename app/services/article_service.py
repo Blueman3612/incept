@@ -27,64 +27,53 @@ class ArticleService:
 
     async def generate_article(self, request: ArticleGenerateRequest) -> ArticleInDB:
         """
-        Generate an educational article based on the provided parameters.
+        Generate a high-quality educational article.
         
         Args:
             request (ArticleGenerateRequest): The article generation request parameters
             
         Returns:
             ArticleInDB: The generated article
-        
-        Raises:
-            Exception: If article generation or storage fails
         """
         try:
-            # Generate article content using OpenAI
-            generated_content = await self.openai_service.generate_educational_article(request)
-            
-            # Parse the JSON response
-            content_data = json.loads(generated_content["content"])
-            logger.info(f"Successfully generated content for topic: {request.topic}")
-            
-            # Create article record
-            article = ArticleInDB(
-                id=str(uuid.uuid4()),
-                title=content_data["title"],
-                content=content_data["content"],
+            # Generate article content using the external service
+            article_data = generate_article_with_grading(
+                lesson=request.lesson,
                 grade_level=request.grade_level,
-                subject=request.subject,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
-                tags=request.keywords or [],
-                quality_score=None,  # To be implemented with content evaluation
-                readability_score=None,  # To be implemented with readability analysis
-                difficulty_level=request.difficulty,
-                key_concepts=content_data["key_concepts"],
-                examples=content_data["examples"]
+                course=request.course,
+                difficulty=request.difficulty.value,
+                lesson_description=request.lesson_description,
+                keywords=request.keywords,
+                max_retries=3  # Default to 3 improvement attempts
             )
             
-            # For testing, return the article without storing if Supabase is not configured
-            if not self.supabase:
-                logger.warning("Supabase client not available, skipping storage")
-                return article
-
-            # Store in Supabase
-            try:
-                await self._store_article(article)
-                logger.info(f"Successfully stored article with ID: {article.id}")
-            except Exception as e:
-                logger.error(f"Failed to store article in database: {str(e)}")
-                # Return the generated article even if storage fails
-                return article
+            # Convert to ArticleInDB model
+            article = ArticleInDB(
+                id=str(uuid.uuid4()),
+                title=article_data.get('title', f"Article on {request.lesson}"),
+                content=article_data.get('content', ''),
+                grade_level=request.grade_level,
+                subject=request.course,  # Map course to subject for database compatibility
+                tags=request.keywords,
+                difficulty_level=request.difficulty,
+                created_at=datetime.now(),
+                updated_at=datetime.now(),
+                target_age_range=self._grade_to_age_range(request.grade_level),
+                quality_score=article_data.get('quality_score'),
+                readability_score=None,  # Could add readability calculation
+                key_concepts=article_data.get('key_concepts', []),
+                examples=article_data.get('examples', [])
+            )
             
+            # Store the article
+            await self._store_article(article)
+            
+            logger.info(f"Generated article: {article.id} - {article.title}")
             return article
             
-        except json.JSONDecodeError as e:
-            logger.error(f"Error parsing generated content: {str(e)}")
-            raise Exception(f"Error parsing generated content: {str(e)}")
         except Exception as e:
-            logger.error(f"Error in article generation process: {str(e)}")
-            raise Exception(f"Error in article generation process: {str(e)}")
+            logger.error(f"Error generating article: {str(e)}", exc_info=True)
+            raise ValueError(f"Failed to generate article: {str(e)}")
 
     async def _store_article(self, article: ArticleInDB) -> None:
         """

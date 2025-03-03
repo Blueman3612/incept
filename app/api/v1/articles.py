@@ -46,7 +46,7 @@ async def generate_article(
     explicit teaching rather than inquiry-based approaches.
     
     Args:
-        request: Article generation parameters including topic, grade level, etc.
+        request: Article generation parameters including lesson, grade level, course, etc.
         article_service: Service for article operations (injected)
         
     Returns:
@@ -58,10 +58,11 @@ async def generate_article(
     try:
         # Use our new generator with grading integration
         article = generate_article_with_grading(
-            topic=request.topic,
+            lesson=request.lesson,
             grade_level=request.grade_level,
-            subject=request.subject,
+            course=request.course,
             difficulty=request.difficulty.value,
+            lesson_description=request.lesson_description,
             keywords=request.keywords,
             max_retries=3,  # Default to 3 retries
             metadata={"style": request.style} if request.style else None

@@ -45,9 +45,10 @@ class ArticleResponse(ArticleInDB):
 
 class ArticleGenerateRequest(BaseModel):
     """Model for article generation request."""
-    topic: str = Field(..., min_length=3, max_length=200, description="The main topic of the article")
+    course: str = Field(..., min_length=2, max_length=50, description="Course name (e.g., Language, Math, Science)")
     grade_level: int = Field(..., ge=1, le=8, description="Target grade level (1-8)")
-    subject: str = Field(..., min_length=2, max_length=50, description="Subject area (e.g., Math, Science)")
+    lesson: str = Field(..., min_length=3, max_length=200, description="The lesson topic (e.g., main_idea, supporting_details)")
+    lesson_description: Optional[str] = Field(None, min_length=5, max_length=500, description="Optional detailed description of the lesson objectives")
     difficulty: DifficultyLevel = Field(..., description="Difficulty level of the content")
     keywords: Optional[List[str]] = Field(default_factory=list, description="Key terms or concepts to include")
     style: Optional[str] = Field(

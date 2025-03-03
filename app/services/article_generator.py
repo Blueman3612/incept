@@ -5,6 +5,9 @@ import random
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 import uuid
+import time
+import json
+import requests
 
 from app.services.article_grader import grade_article, preprocess_article_content
 
@@ -39,10 +42,10 @@ class ArticleGenerator:
         ]
     
     def generate_article(self, 
-                        topic: str,
+                        lesson: str,
                         grade_level: int, 
-                        subject: str,
-                        difficulty: str,
+                        course: str,
+                        lesson_description: Optional[str] = None,
                         keywords: Optional[List[str]] = None,
                         max_retries: int = 3,
                         metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
@@ -50,10 +53,10 @@ class ArticleGenerator:
         Generates a high-quality educational article.
         
         Args:
-            topic: Main topic of the article
+            lesson: The lesson topic (e.g., Main Idea, Character Analysis)
             grade_level: Target grade level (1-8)
-            subject: Subject area (e.g., "Language Arts")
-            difficulty: Difficulty level (e.g., "beginner", "intermediate", "advanced")
+            course: Course name (e.g., "Language", "Math", "Science")
+            lesson_description: Optional detailed description of the lesson objectives
             keywords: Optional list of keywords to include
             max_retries: Maximum number of improvement attempts
             metadata: Additional metadata for the grader
@@ -61,7 +64,7 @@ class ArticleGenerator:
         Returns:
             Dictionary containing the generated article and metadata
         """
-        logger.info(f"Generating article on '{topic}' for Grade {grade_level} {subject} ({difficulty} level)")
+        logger.info(f"Generating article on '{lesson}' for Grade {grade_level} {course}")
         
         # Prepare metadata for grading
         if metadata is None:
@@ -69,16 +72,17 @@ class ArticleGenerator:
         
         grading_metadata = {
             "grade_level": grade_level,
-            "subject": subject,
+            "course": course,
+            "lesson": lesson,
             **metadata
         }
         
         # Generate initial article
         article_content = self._generate_initial_article(
-            topic=topic,
+            lesson=lesson,
             grade_level=grade_level,
-            subject=subject,
-            difficulty=difficulty,
+            course=course,
+            lesson_description=lesson_description,
             keywords=keywords or []
         )
         
@@ -90,21 +94,30 @@ class ArticleGenerator:
         
         # If not passing, try to improve it
         retry_count = 0
+        generation_history = []
+        
         while not best_result.get("passing", False) and retry_count < max_retries:
             retry_count += 1
             logger.info(f"Attempting article improvement (try {retry_count}/{max_retries})")
+            
+            # Store the previous version
+            generation_history.append({
+                "content": best_content,
+                "grade_results": best_result,
+                "attempt": retry_count
+            })
             
             # Extract feedback for improvement
             improvement_feedback = self._extract_improvement_feedback(best_result)
             
             # Generate improved version
             improved_content = self._generate_improved_article(
-                topic=topic,
+                lesson=lesson,
                 grade_level=grade_level,
-                subject=subject,
-                difficulty=difficulty,
+                course=course,
                 original_content=best_content,
                 feedback=improvement_feedback,
+                lesson_description=lesson_description,
                 keywords=keywords or []
             )
             
@@ -122,7 +135,7 @@ class ArticleGenerator:
                 logger.info(f"Accepted improved version with score {best_score:.2f}")
         
         # Generate a title
-        title = self._generate_title(best_content, topic, grade_level, subject)
+        title = self._generate_title(best_content, lesson, grade_level, course, lesson_description)
         
         # Format the final response
         return {
@@ -130,31 +143,34 @@ class ArticleGenerator:
             "title": title,
             "content": best_content,
             "grade_level": grade_level,
-            "subject": subject,
+            "course": course,
+            "lesson": lesson,
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "tags": keywords or [],
             "quality_score": best_score,
             "readability_score": None,  # Could add readability calculation
-            "difficulty_level": difficulty,
+            "difficulty_level": None,
             "key_concepts": self._extract_key_concepts(best_content),
-            "examples": self._extract_examples(best_content)
+            "examples": self._extract_examples(best_content),
+            "generation_history": generation_history,
+            "grade_results": best_result
         }
     
     def _generate_initial_article(self, 
-                                topic: str,
+                                lesson: str,
                                 grade_level: int,
-                                subject: str,
-                                difficulty: str,
-                                keywords: List[str]) -> str:
+                                course: str,
+                                lesson_description: Optional[str] = None,
+                                keywords: List[str] = None) -> str:
         """
         Generates the initial article draft.
         
         Args:
-            topic: Main topic of the article
+            lesson: The lesson topic (e.g., Main Idea, Character Analysis)
             grade_level: Target grade level
-            subject: Subject area
-            difficulty: Difficulty level
+            course: Course name (e.g., "Language", "Math", "Science")
+            lesson_description: Optional detailed description of the lesson objectives
             keywords: List of keywords to include
             
         Returns:
@@ -163,9 +179,17 @@ class ArticleGenerator:
         # Select a random section template for variety
         sections = random.choice(self.section_templates)
         
+        if keywords is None:
+            keywords = []
+            
+        # Prepare lesson description if provided
+        lesson_description_text = ""
+        if lesson_description:
+            lesson_description_text = f"\nLESSON DESCRIPTION: {lesson_description}"
+        
         # Build the prompt
         prompt = f"""
-Generate a Grade {grade_level} {subject} educational article on "{topic}" at {difficulty} difficulty level.
+Generate a Grade {grade_level} {course} educational article on the lesson topic "{lesson}".{lesson_description_text}
 
 IMPORTANT: This must follow Direct Instruction teaching style with these characteristics:
 1. Explicitly teach concepts with clear, direct language
@@ -175,7 +199,7 @@ IMPORTANT: This must follow Direct Instruction teaching style with these charact
 5. Organize content logically with clear headings and sections
 
 ARTICLE STRUCTURE:
-- {sections['intro']}: Briefly introduce the topic and why it's important
+- {sections['intro']}: Briefly introduce the lesson topic and why it's important
 - {sections['concept']}: Clearly explain the main concepts with definitions
 - {sections['examples']}: Provide 3 worked examples (easy, medium, and hard difficulty)
   • Break down each example into explicit steps
@@ -186,10 +210,9 @@ ARTICLE STRUCTURE:
 
 CONTENT REQUIREMENTS:
 - Target Grade Level: {grade_level}
-- Subject: {subject}
-- Topic: {topic}
-- Difficulty: {difficulty}
-- Include these keywords: {', '.join(keywords)}
+- Course: {course}
+- Lesson: {lesson}
+- Include these keywords: {', '.join(keywords) if keywords else 'None specified'}
 - Factually accurate information only
 - Clear and unambiguous wording
 - Content appropriate for students with lower working memory
@@ -200,37 +223,45 @@ FORMAT REQUIREMENTS:
 - Break text into short paragraphs
 - Include visual cues like bold text for important concepts
 
-The article should prepare students to answer questions of varying difficulty levels about {topic}.
+The article should prepare students to answer questions of varying difficulty levels about {lesson}.
 """
         
         # Generate the content
         return self._generate_with_gpt(prompt)
     
     def _generate_improved_article(self,
-                                  topic: str,
+                                  lesson: str,
                                   grade_level: int,
-                                  subject: str,
-                                  difficulty: str,
+                                  course: str,
                                   original_content: str,
                                   feedback: str,
-                                  keywords: List[str]) -> str:
+                                  lesson_description: Optional[str] = None,
+                                  keywords: List[str] = None) -> str:
         """
         Generates an improved version of the article based on grader feedback.
         
         Args:
-            topic: Main topic of the article
+            lesson: The lesson topic (e.g., Main Idea, Character Analysis)
             grade_level: Target grade level
-            subject: Subject area
-            difficulty: Difficulty level
+            course: Course name (e.g., "Language", "Math", "Science")
             original_content: Original article content
             feedback: Feedback from the grader
+            lesson_description: Optional detailed description of the lesson objectives
             keywords: Keywords to include
             
         Returns:
             Improved article content
         """
+        if keywords is None:
+            keywords = []
+            
+        # Prepare lesson description if provided
+        lesson_description_text = ""
+        if lesson_description:
+            lesson_description_text = f"\nLESSON DESCRIPTION: {lesson_description}"
+            
         prompt = f"""
-You're an expert educator specializing in Direct Instruction. I need you to improve this Grade {grade_level} {subject} article on "{topic}".
+You're an expert educator specializing in Direct Instruction. I need you to improve this Grade {grade_level} {course} article on the lesson topic "{lesson}".{lesson_description_text}
 
 The article has been evaluated and needs improvement based on this feedback:
 
@@ -247,7 +278,7 @@ REVISION INSTRUCTIONS:
 3. Make sure worked examples are broken down into very clear steps
 4. Maintain grade-appropriate vocabulary and sentence structure
 5. Ensure all content is factually accurate
-6. Keep the article focused on the topic: "{topic}"
+6. Keep the article focused on the lesson topic: "{lesson}"
 7. Include these keywords: {', '.join(keywords)}
 
 IMPORTANT:
@@ -329,21 +360,27 @@ Return the complete improved article maintaining proper formatting with headings
         # Otherwise use overall score
         return current_score > best_score
     
-    def _generate_title(self, content: str, topic: str, grade_level: int, subject: str) -> str:
+    def _generate_title(self, content: str, lesson: str, grade_level: int, course: str, lesson_description: Optional[str] = None) -> str:
         """
         Generates an engaging title for the article.
         
         Args:
             content: Article content
-            topic: Main topic
+            lesson: The lesson topic
             grade_level: Target grade level
-            subject: Subject area
+            course: Course name
+            lesson_description: Optional detailed description of the lesson objectives
             
         Returns:
             Article title
         """
+        # Prepare lesson description if provided
+        lesson_description_text = ""
+        if lesson_description:
+            lesson_description_text = f"\nLESSON DESCRIPTION: {lesson_description}"
+            
         prompt = f"""
-Create a brief, engaging title for a Grade {grade_level} {subject} educational article on "{topic}".
+Create a brief, engaging title for a Grade {grade_level} {course} educational article on the lesson topic "{lesson}".{lesson_description_text}
 The title should be:
 1. Clear and descriptive
 2. No more than 8 words
@@ -436,17 +473,42 @@ Return ONLY a comma-separated list of example descriptions, with no numbering or
             Generated content
         """
         try:
-            response = openai.chat.completions.create(
-                model=self.model,
-                messages=[
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            payload = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": "You are an expert education content creator specializing in Direct Instruction teaching methods and Grade K-8 curriculum development."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.7,
-                max_tokens=2500
-            )
+                "temperature": 0.7,
+                "max_tokens": 2500
+            }
             
-            content = response.choices[0].message.content
+            start_time = time.time()
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            elapsed_time = time.time() - start_time
+            
+            logger.info(f"OpenAI API response time: {elapsed_time:.2f} seconds")
+            
+            if response.status_code != 200:
+                error_msg = f"API request failed: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            result = response.json()
+            content = result["choices"][0]["message"]["content"].strip()
+            
+            tokens_used = result.get("usage", {})
+            logger.info(f"Generation complete. Tokens used: {json.dumps(tokens_used)}")
+            
             return preprocess_article_content(content)
             
         except Exception as e:
@@ -455,10 +517,10 @@ Return ONLY a comma-separated list of example descriptions, with no numbering or
 
 
 def generate_article_with_grading(
-    topic: str,
+    lesson: str,
     grade_level: int, 
-    subject: str,
-    difficulty: str,
+    course: str,
+    lesson_description: Optional[str] = None,
     keywords: Optional[List[str]] = None,
     max_retries: int = 3,
     metadata: Optional[Dict[str, Any]] = None
@@ -467,23 +529,23 @@ def generate_article_with_grading(
     Main function to generate a high-quality article that passes quality checks.
     
     Args:
-        topic: Main topic of the article
+        lesson: The lesson topic (e.g., Main Idea, Character Analysis)
         grade_level: Target grade level (1-8)
-        subject: Subject area (e.g., "Language Arts")
-        difficulty: Difficulty level (e.g., "beginner", "intermediate", "advanced")
+        course: Course name (e.g., "Language", "Math", "Science")
+        lesson_description: Optional detailed description of the lesson objectives
         keywords: Optional list of keywords to include
         max_retries: Maximum number of improvement attempts
         metadata: Additional metadata for the grader
         
     Returns:
-        Dictionary containing the generated article and metadata
+        Dictionary containing the generated article content, metadata, and quality assessment
     """
     generator = ArticleGenerator()
     return generator.generate_article(
-        topic=topic,
+        lesson=lesson,
         grade_level=grade_level,
-        subject=subject,
-        difficulty=difficulty,
+        course=course,
+        lesson_description=lesson_description,
         keywords=keywords,
         max_retries=max_retries,
         metadata=metadata

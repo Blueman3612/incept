@@ -5,6 +5,8 @@ import openai
 from typing import Dict, List, Tuple, Any, Optional
 import re
 from datetime import datetime
+import requests
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -233,37 +235,55 @@ class ArticleQualityGrader:
     
     def _evaluate_with_llm(self, content: str, grade_level: int, subject: str) -> Tuple[Dict[str, float], Dict[str, str], List[str], float]:
         """
-        Uses LLM to evaluate content quality based on defined criteria.
+        Evaluates the article content using an LLM.
         
         Args:
             content: The article content to evaluate
-            grade_level: The target grade level of the content
-            subject: The subject area of the content
+            grade_level: The target grade level
+            subject: The subject area
             
         Returns:
-            Tuple containing:
-            - criterion_scores: Dictionary mapping criteria to scores
-            - criterion_feedback: Dictionary mapping criteria to feedback
-            - critical_issues: List of critical issues identified
-            - overall_score: Weighted average of criterion scores
+            Tuple containing criterion scores, criterion feedback, critical issues, and overall score
         """
         try:
             # Build the evaluation prompt
             prompt = self._build_evaluation_prompt(content, grade_level, subject)
             
-            # Call the OpenAI API
-            response = openai.chat.completions.create(
-                model=self.model,
-                messages=[
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            payload = {
+                "model": self.model,
+                "messages": [
                     {"role": "system", "content": "You are an expert educational content evaluator with deep knowledge of Direct Instruction teaching methods and language arts curriculum for elementary education."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.1,  # Lower temperature for more consistent evaluations
-                max_tokens=3000
-            )
+                "temperature": 0.1,  # Lower temperature for more consistent evaluations
+                "max_tokens": 3000
+            }
             
-            # Extract the response text
-            response_text = response.choices[0].message.content
+            start_time = time.time()
+            response = requests.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers=headers,
+                json=payload
+            )
+            elapsed_time = time.time() - start_time
+            
+            logger.info(f"OpenAI API response time: {elapsed_time:.2f} seconds")
+            
+            if response.status_code != 200:
+                error_msg = f"API request failed: {response.status_code} - {response.text}"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+            
+            result = response.json()
+            response_text = result["choices"][0]["message"]["content"].strip()
+            
+            tokens_used = result.get("usage", {})
+            logger.info(f"Evaluation complete. Tokens used: {json.dumps(tokens_used)}")
             
             # Parse the evaluation results
             return self._parse_evaluation_response(response_text)
