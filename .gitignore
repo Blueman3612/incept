@@ -47,3 +47,4 @@ scripts/output/
 
 # Local development
 .DS_Store 
+ec2-key.pem
