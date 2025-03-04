@@ -66,4 +66,21 @@ class ArticleGradeResponse(BaseModel):
     critical_issues: List[str] = Field(default_factory=list, description="List of critical issues identified")
     passing: bool = Field(..., description="Whether the article passes quality standards")
     feedback: str = Field(..., description="Comprehensive feedback with improvement suggestions")
-    timestamp: str = Field(..., description="Timestamp of the evaluation") 
+    timestamp: str = Field(..., description="Timestamp of the evaluation")
+
+
+class ArticleTagRequest(BaseModel):
+    """Model for article tagging request."""
+    content: str = Field(..., min_length=50, description="The article content to tag")
+    metadata: Optional[Dict] = Field(default_factory=dict, description="Optional metadata about the article")
+
+
+class ArticleTagResponse(BaseModel):
+    """Model for article tagging response."""
+    subject: str = Field(..., description="Subject of the article")
+    grade_level: int = Field(..., ge=1, le=8, description="Grade level (1-8)")
+    standard: str = Field(..., description="Educational standard (e.g., CCSS code)")
+    lesson: str = Field(..., description="Specific lesson within the standard")
+    difficulty_level: DifficultyLevel = Field(..., description="Difficulty level")
+    tags: List[str] = Field(default_factory=list, description="Additional tags")
+    confidence: float = Field(..., ge=0, le=1, description="Confidence level in the tagging (0-1)") 

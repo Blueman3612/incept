@@ -9,7 +9,9 @@ from app.schemas.article import (
     ArticleResponse, 
     ArticleGradeRequest, 
     ArticleGradeResponse,
-    DifficultyLevel
+    DifficultyLevel,
+    ArticleTagRequest,
+    ArticleTagResponse
 )
 from app.services.article_service import ArticleService
 from app.services.article_grader import grade_article
@@ -144,4 +146,26 @@ async def grade_article_endpoint(
         raise HTTPException(
             status_code=500,
             detail=f"Failed to grade article: {str(e)}"
-        ) 
+        )
+
+
+@router.post("/tag", response_model=ArticleTagResponse)
+async def tag_article_endpoint(
+    request: ArticleTagRequest
+) -> ArticleTagResponse:
+    """
+    Tag an article with subject, grade, standard, lesson, and difficulty.
+    This endpoint is not yet implemented.
+    
+    Args:
+        request: Article tag request containing content and optional metadata
+        
+    Returns:
+        ArticleTagResponse: Tagging results
+        
+    Raises:
+        HTTPException: If article tagging fails
+    """
+    return {
+        "message": "This endpoint is not yet implemented"
+    } 
